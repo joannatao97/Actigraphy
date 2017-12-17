@@ -1,18 +1,10 @@
-function [actigraphyData QC] = autoActigraphyQC()
+function [actigraphyData QC] = autoActigraphyQC2(dir01, trans1, trans2, trange, savedataYN)
 %
 % Actigraphy QC Analysis
 % ----------------------
-% ABOUT: This software performs a user-guided assessment of wrist
+% ABOUT: This software performs an automated assessment of wrist
 % actigraphy data. 
 %
-% USE: manualactigraphyQC()
-%       (1) The program will first ask for a directory in str format. Choose
-%       the parent directory in which all patients are listed.
-%       e.g. '~/Baker/Actigraphy/' or '~/Baker/Actigraphy'
-%       (2) Select a time window.
-%       (3) Select a type of transition (still, slow, moderate, or
-%       vigorous). A list of associated transitions from the REDCap data
-%       will then be displayed. Choose an appropriate transition.
 %
 % ----------------------
 % Author: Joshua D. Salvi
@@ -20,7 +12,6 @@ function [actigraphyData QC] = autoActigraphyQC()
 % ----------------------
 %
 
-    dir01 = input('Which directory? ');
     
     if dir01(end) ~= '/'
             dir01 = [dir01 '/'];
@@ -36,11 +27,10 @@ function [actigraphyData QC] = autoActigraphyQC()
     end
     trans0 = [{'still'}, {'slow'}, {'moderate'}, {'vigorous'}];
     fprintf('%s\n%s\n%s\n%s\n','(1) still','(2) slow','(3) moderate','(4) vigorous');
-    transtype1 = trans0{input('Activity 1: ')};
-    transtype2 = trans0{input('Activity 2: ')};
+    transtype1 = trans0{trans1};
+    transtype2 = trans0{trans2};
     transtype = [transtype1 ':' transtype2]; disp(['Selected transition ' transtype]);
     
-    trange = input('Time window (sec): ');
     
     QC = ones(1,length(patients));
     
@@ -55,7 +45,7 @@ function [actigraphyData QC] = autoActigraphyQC()
         pp0 = 0;
         
         files = dir(dir0Act);
-        actigraphyData{patientChoice}.patient = patients{patientChoice};
+        actigraphyData(patientChoice).patient = patients{patientChoice};
         
         if pp0 == 0
             % Import Data
@@ -91,11 +81,11 @@ function [actigraphyData QC] = autoActigraphyQC()
             end
         end
         
-        actigraphyData{patientChoice}.transitions = transout;
+        actigraphyData(patientChoice).transitions = transout;
         
         catch
             disp('No transitions found.');
-            actigraphyData{patientChoice}.transitions = 'None';
+            actigraphyData(patientChoice).transitions = 'None';
         end
         
         try
@@ -164,10 +154,10 @@ function [actigraphyData QC] = autoActigraphyQC()
             QC(patientChoice) = 0;
         end
         try
-        actigraphyData{patientChoice}.ACC = actigraphyDataACC;
-        actigraphyData{patientChoice}.ACCRS = actigraphyDataACCRS;
-        actigraphyData{patientChoice}.TEMP = actigraphyDataTEMP;
-        actigraphyData{patientChoice}.EDA = actigraphyDataEDA;
+        actigraphyData(patientChoice).ACC = actigraphyDataACC;
+        actigraphyData(patientChoice).ACCRS = actigraphyDataACCRS;
+        actigraphyData(patientChoice).TEMP = actigraphyDataTEMP;
+        actigraphyData(patientChoice).EDA = actigraphyDataEDA;
         catch
             disp('error 5')
             QC(patientChoice) = 0;
@@ -177,7 +167,6 @@ function [actigraphyData QC] = autoActigraphyQC()
         
     end
     
-    savedataYN = input('Save data? (1=yes): ');
     if savedataYN == 1
         save([dir01 date 'output-' transtype '-auto.mat'], 'actigraphyData', 'trange' ,'QC');
     end
