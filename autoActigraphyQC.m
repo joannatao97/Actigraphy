@@ -102,7 +102,7 @@ function [actigraphyData QC] = autoActigraphyQC()
             
         for inputStrChoice = 1:length(transout)
             try
-            inputStr = transout{inputStrChoice}
+            inputStr = transout{inputStrChoice};
         
             qrc = find(inputStr == ':'); qrc = qrc(end);
         
@@ -201,7 +201,7 @@ function [r,c,V] = findnearest(srchvalue,srcharray,bias)
     end
 
     % give the correct output
-    if nargout==1 | nargout==0
+    if nargout==1 || nargout==0
         if all(isinf(srcharray(:)))
             r = [];
         else
