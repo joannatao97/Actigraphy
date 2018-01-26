@@ -380,7 +380,7 @@ function [s] = extractRawActData3(dir01, patientstoanalyse, dir2, loadfile, RCon
         s{patientChoice}.velRS_Pxx_0to5Hz = velRS_pxx_0to5Hz;
         s{patientChoice}.velRS_Pxx_5to10Hz = velRS_pxx_5to10Hz;
         s{patientChoice}.velRS_Pxx_10to15Hz = velRS_pxx_10to15Hz;
-        end
+        
         end
         
         clear velRSmean velRSmax velRSvar tempmean tempmax tempvar edamean edamax edavar RCmean RCmax RCvar
