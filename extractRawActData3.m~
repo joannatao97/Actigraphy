@@ -380,7 +380,7 @@ function [s] = extractRawActData3(dir01, patientstoanalyse, dir2, loadfile, RCon
         s{patientChoice}.velRS_Pxx_0to5Hz = velRS_pxx_0to5Hz;
         s{patientChoice}.velRS_Pxx_5to10Hz = velRS_pxx_5to10Hz;
         s{patientChoice}.velRS_Pxx_10to15Hz = velRS_pxx_10to15Hz;
-        
+        end
         end
         
         clear velRSmean velRSmax velRSvar tempmean tempmax tempvar edamean edamax edavar RCmean RCmax RCvar
@@ -391,3 +391,22 @@ function [s] = extractRawActData3(dir01, patientstoanalyse, dir2, loadfile, RCon
     end
     
 end
+
+function [ targetDST ] = TimezoneConvert( dn, fromTimezone, toTimezone )
+%   Converts a datenum from a given timezone (e.g. 'UTC') to a daylight saving local time of another timezone (e.G. 'Europe/Paris').
+%   Use TimeZone.getAvailableIDs for a complete list of supported timezones.
+%   If a timezone parameter is wrong, it will be replaced by GMT.
+
+    import java.lang.String
+    import java.util.* java.awt.*
+    import java.util.Enumeration
+
+    t1 = GregorianCalendar(TimeZone.getTimeZone(fromTimezone));
+    t1.set(year(dn), month(dn)-1, day(dn), hour(dn), minute(dn), second(dn))
+
+    t2 = GregorianCalendar(TimeZone.getTimeZone(toTimezone));
+    t2.setTimeInMillis(t1.getTimeInMillis());
+    targetDST = rawjavacalendar2datenum(t2);
+end
+
+

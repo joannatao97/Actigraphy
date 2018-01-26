@@ -102,6 +102,25 @@ function [s] = extractRawActData3(dir01, patientstoanalyse, dir2, loadfile, RCon
         acc(:,1) = acc(:,1)./86400./1e3 + unix_epoch;
         temp(:,1) = temp(:,1)./86400./1e3 + unix_epoch;
         eda(:,1) = eda(:,1)./86400./1e3 + unix_epoch;
+        
+%         unix_epoch = datenum(1970,1,1,0,0,0);
+%         disp('Converting times...')
+%         disp('...acc...')
+%         for j = 1:size(acc,1)
+%             acc(j,1) = acc(j,1)./86400./1e3 + unix_epoch;
+%             acc(j,1) = TimezoneConvert(acc(j,1),'UTC','America/New_York');
+%         end
+%         disp('...temp...')
+%         for j = 1:size(temp,1)
+%             temp(j,1) = temp(j,1)./86400./1e3 + unix_epoch;
+%             acc(j,1) = TimezoneConvert(temp(j,1),'UTC','America/New_York');
+%         end
+%         disp('...eda...');
+%         for j = 1:size(eda,1)
+%             eda(j,1) = eda(j,1)./86400./1e3 + unix_epoch;
+%             eda(j,1) = TimezoneConvert(eda(j,1),'UTC','America/New_York');
+%         end
+%         disp('Complete.')
         end
         end
         
@@ -391,3 +410,28 @@ function [s] = extractRawActData3(dir01, patientstoanalyse, dir2, loadfile, RCon
     end
     
 end
+
+function [ targetDST ] = TimezoneConvert( dn, fromTimezone, toTimezone )
+%   Converts a datenum from a given timezone (e.g. 'UTC') to a daylight saving local time of another timezone (e.G. 'Europe/Paris').
+%   Use TimeZone.getAvailableIDs for a complete list of supported timezones.
+%   If a timezone parameter is wrong, it will be replaced by GMT.
+
+    import java.lang.String
+    import java.util.* java.awt.*
+    import java.util.Enumeration
+
+    t1 = GregorianCalendar(TimeZone.getTimeZone(fromTimezone));
+    t1.set(year(dn), month(dn)-1, day(dn), hour(dn), minute(dn), second(dn))
+
+    t2 = GregorianCalendar(TimeZone.getTimeZone(toTimezone));
+    t2.setTimeInMillis(t1.getTimeInMillis());
+    targetDST = rawjavacalendar2datenum(t2);
+end
+
+function [ matlabdatenum ] = rawjavacalendar2datenum( cal )
+%   Converts a java.util.Calendar date local time into a Matlab datenum.
+%   Keeps the original local time, does not try to convert to UTC.
+    javaSerialDate = cal.getTimeInMillis() + cal.get(cal.ZONE_OFFSET) + cal.get(cal.DST_OFFSET);
+    matlabdatenum = datenum([1970 1 1 0 0 javaSerialDate / 1000]);
+end
+
