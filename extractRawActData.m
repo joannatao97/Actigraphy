@@ -28,8 +28,7 @@ function [s] = extractRawActData(dir01, tz)
     end
     
     clear RCvals acc temp eda data RCraw RCrawTS velRS RCstate RCdate RCu
-    dir0 = [dir01 '/'];
-    dir0Act = [dir0 'actigraphy/raw/'];
+    dir0Act = [dir01 'actigraphy/raw/'];
 
     files = dir(dir0Act);
 
@@ -49,8 +48,7 @@ function [s] = extractRawActData(dir01, tz)
         end
     end
 
-    dir0 = [dir01 patients '/'];
-    dir0RC = [dir0 'redcap/processed/'];
+    dir0RC = [dir01 'redcap/processed/'];
     files = dir(dir0RC);
     for p0 = 1:length(files)
         try
@@ -74,14 +72,12 @@ function [s] = extractRawActData(dir01, tz)
     if exist('tz') == 0
         tz = -4;
     end
-    if RConly == 0
-        try
-            unix_epoch = datenum(1970,1,1,tz,0,0);
-            acc(:,1) = acc(:,1)./86400./1e3 + unix_epoch;
-            temp(:,1) = temp(:,1)./86400./1e3 + unix_epoch;
-            eda(:,1) = eda(:,1)./86400./1e3 + unix_epoch;
-        catch
-        end
+    try
+        unix_epoch = datenum(1970,1,1,tz,0,0);
+        acc(:,1) = acc(:,1)./86400./1e3 + unix_epoch;
+        temp(:,1) = temp(:,1)./86400./1e3 + unix_epoch;
+        eda(:,1) = eda(:,1)./86400./1e3 + unix_epoch;
+    catch
     end
 
     p0=1;
@@ -352,7 +348,10 @@ function [s] = extractRawActData(dir01, tz)
     end  
     
     % Save the MAT file
-    save([dir01 'ExtractedData.mat'],'s','-v7.3');
+    try
+        save([dir01 'ExtractedData.mat'],'s','-v7.3');
+    catch
+    end
     
     
     % Create CSV files
