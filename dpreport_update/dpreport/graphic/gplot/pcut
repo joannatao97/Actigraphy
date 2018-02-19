@@ -1,0 +1,323 @@
+#!/usr/bin/perl -w
+use strict;
+use Getopt::Long qw(:config no_ignore_case);
+
+my ($prog,$progdir);
+
+# Who am I and how did I get here?
+BEGIN {
+  if($0 =~ m{(.*)/(.*?)$}) {
+    ($progdir,$prog) = ($1,$2);
+  } else {
+    ($progdir,$prog) = ($0,'');
+  }
+  $progdir = '.' unless $progdir;
+  push @INC, "$progdir/lib", "$progdir";
+  #print join(':',@INC),"\n";
+}
+
+# Keep track of warnings, and put them at the bottom of any output
+# to that they're not lost in the bunch of stuff that might scroll by.
+my $warnings = "";
+
+# What's this all about?
+sub usage {
+	$warnings = "\n$warnings" if $warnings;
+<<"EOF"
+======================================================================
+$prog:
+----------------------------------------------------------------------
+Extract a column from a file
+----------------------------------------------------------------------
+Usage: $prog [-cs regex] [-rs regex] [-o out ] [-v] [-d] \
+             [-u string] [-cd str] [-rd str] [-c number] [ infile ]
+----------------------------------------------------------------------
+infile    = optional file from which to grab stuff (default STDIN)
+-cs regex = optional perl regular expresssion for column separators.
+            The default is any single whitespace character ('\\s')
+-rs regex = optional perl regular expresssion for row separators.
+            The default is a line-break ('\\n|\\r\\f');
+-o out    = optional output file (default is STDOUT)
+-c number = the column number(s) to extract. Can be several separated
+            by commas or a single dash for a series (e.g.: -c 1,4-6,3
+            will extract columns 1,3,4,5,6 and output them in 1,4,5,6,3
+            order). Column numbers may be repeated. If -c is omitted,
+            all columns are extracted. If you use "max" in the place
+            of a number (e.g., -c 3-max) it will be replaced by the
+            maximum column length of the longest column in the input
+            file.
+-d        = delete rows on _input_ with no matching columns
+-dq       = double-quote each cell 
+-sq       = single-quote each cell 
+-v        = be verbose (to STDERR)
+-u string = set "undefined" (non-existent) columns to 'str'. The
+            default is the empty string.
+-cd str   = (column delimitor) separate 2 or more output columns with
+            'str'. The default is space ' '.
+-rd str   = (row delimitor) separate output rows with 'str'. The
+            default is a new line '\\n'.
+-R        = reverse columns (at input)
+-r        = reverse columns (at output)
+-p  | --pivot = pivot output (turn columns into rows)
+-t  | --transpose = same as pivot
+      --csv   = output csv (comma separated values) format
+      --tdv   = output tdv (tab delimited values) format
+Examples:
+# Get the 3rd column from file
+$prog -c 3 file
+# Get columns from standard input
+# Output columns 1 throuh 3 in that order, then col 9, then col 8 to the
+# last column (including 9 again).
+# consider "-" as part of whitespace, separate columns by tabs in output
+# and don't output rows with no matching columns, but double-quote data
+$prog -c 1-3,9,8-max -cs "\\s+-" -dq -cd "\\t"
+# Get the 9th column, but consider any word-boundary as a column separator
+$prog -c 9 -cs '\\b' file
+======================================================================$warnings
+EOF
+};
+
+# Set defaults:
+my $opts={cs=>'\s',v=>0};
+
+
+if(! @ARGV) {
+	warn "WARNING: Got no command line parameters. I'm waiting for input on STDIN, and will just convert all tabs to space. Is this what you want? Try $prog -h for help.\n"
+}
+
+# Get the command-line options
+GetOptions($opts,'cs=s','rs=s','c=s','o=s','v+','d','help|h|?',
+					 'dq','sq','u=s','cd=s','rd=s','pivot|p|t|transpose','csv','tdv', 'r', 'R', )
+  || die &usage, "ERROR: Did not understand command line options.\n";
+
+if($opts->{csv} && ( $opts->{dq} || $opts->{sq} || $opts->{cd} || $opts->{rd} || $opts->{tdv} ) ) {
+	die &usage, "ERROR: You're not allowed to specify --tdv, -dq, -sq, -cd, or -rd with --csv. Sorry!\n";
+}
+if($opts->{tdv} && ( $opts->{dq} || $opts->{sq} || $opts->{cd} || $opts->{rd} || $opts->{csv} ) ) {
+	die &usage, "ERROR: You're not allowed to specify --csv, -dq, -sq, -cd, or -rd with --tdv. Sorry!\n";
+}
+
+$opts->{rd} = "\n" unless defined $opts->{rd};
+$opts->{cd} = " " unless defined $opts->{cd};
+
+# Unescape special chars
+foreach my $o (qw(cd rd u)) {
+	if(defined $opts->{$o}) {
+		$opts->{$o} =~ s{\\n}{\n}g;
+		$opts->{$o} =~ s{\\t}{\t}g;
+		$opts->{$o} =~ s{\\r}{\r}g;
+		$opts->{$o} =~ s{\\f}{\f}g;
+	}
+}
+
+# Check to see if we got some characters which maybe were supposed to be escaped.
+foreach my $o (qw(cs rs cd rd u)) {
+	if(defined $opts->{$o} && $opts->{$o} =~ m{(?<!\\)([ntrf])}) {
+		$warnings .= "WARNING: -$o '$opts->{s}' contains a '$1'. Did you mean '\\$1'?\n" if $opts->{v};
+	}
+}
+
+my $col_delimiter = $opts->{cd};
+my $row_delimiter = $opts->{rd};
+
+if(@ARGV > 1) {
+	die &usage,"ERROR: Found ".(@ARGV+0)." files on command-line ('".join("','",@ARGV)."'), I'm not smart enough to work with more than one!\n";;
+}
+
+# They need help
+die &usage if $opts->{help};
+
+#die &usage, "ERROR: -c is required!\n" if(! $opts->{c});
+die &usage, "ERROR: do you want double quote or single quote?\n" if($opts->{dq} && $opts->{sq});
+
+my $quote_string = "";
+$quote_string = "'" if $opts->{sq};
+$quote_string = '"' if $opts->{dq};
+
+my $file = shift(@ARGV) || '-';
+my $display_file = $file;
+$display_file = 'STDIN' if '-' eq $file;
+
+
+if('-' ne $file) {
+	die &usage, "ERROR: $display_file does not exists!\n" if(! -e $file);
+	die &usage, "ERROR: $display_file is not a file!\n" if(! -f $file);
+	die &usage, "ERROR: $display_file is not readable!\n" if(! -r $file);	
+}
+
+
+my(@rows);
+open(IN,"< $file") || die "ERROR: Unable to read '$display_file'!REASON: $!\n";
+if($opts->{rs}) {
+	@rows = split(/$opts->{rs}/,join('',<IN>));
+} else {
+	chomp(@rows = <IN>);
+}
+close(IN);
+
+if(! @rows) {
+	$warnings .= "WARNING: $display_file has no rows. Not a very useful file.\n";
+}
+
+open(OUT, ">&STDOUT");
+
+if($opts->{o}) {
+	my $out = $opts->{o};
+	my $bak = "$out.bak";
+	if(-e $out) {
+		if(-e $bak) {
+			$warnings .= "WARNING: Overwriting existing '$bak'!\n" if $opts->{v};
+			unlink($bak) || die "ERROR: Unable to remove old backup '$bak'!\nREASON: $!\n";
+		}
+		rename($out,$bak) || die "ERROR: Unable to backup existing '$out' to '$bak'!\nREASON: $!\n";
+	}
+	open(OUT,">$out") || die "ERROR: Unable to open '$out' for writing!\nREASON: $!\n";
+}
+
+my $missing = 0;
+my $missing_cells = {};
+my $num_rows = 0;
+my $max_cols = 0;
+my $min_cols = 1_000_000_000;
+my $cols_to_get = defined $opts->{c} ?  $opts->{c} : '';
+
+my @table;
+
+if($cols_to_get =~ m/max/) {
+	foreach my $row (@rows) {
+		$num_rows++;
+		my @cols = split(/$opts->{cs}/,$row);
+		$max_cols = @cols if @cols > $max_cols;
+		$min_cols = @cols if @cols < $min_cols;
+	}
+}
+$cols_to_get =~ s/max/$max_cols/;
+$cols_to_get =~ s{\s*}{}g;
+$cols_to_get =~ s/(\d+)-(\d+)/join(',',($1 .. $2))/ge;
+my @col_nums = split(',',$cols_to_get);
+
+foreach my $row (@rows) {
+	$num_rows++;
+	my @cols = split(/$opts->{cs}/,$row);
+	@cols = reverse(@cols) if $opts->{R};
+	$max_cols = @cols if @cols > $max_cols;
+	$min_cols = @cols if @cols < $min_cols;
+	my @new_row;
+	my $col_count = 0;
+	my $data_count = 0;
+	@col_nums = (1 .. $#cols+1) if $cols_to_get eq '';
+	foreach my $col_num (@col_nums) {
+		$col_count ++;
+		if($col_num <= @cols) {
+			push @new_row, $cols[$col_num - 1];
+			$data_count++;
+		} else {
+			push @new_row, undef;
+			$missing_cells->{$col_count} = 0 unless $missing_cells->{$col_count};
+			$missing_cells->{$col_count}++;
+			$missing ++;
+		}
+	}
+	if($opts->{d} && ! $data_count) {
+		# don't store empty rows.
+		next;
+	}
+	@new_row = reverse(@new_row) if $opts->{r};
+	foreach(@new_row) {
+		if(defined $opts->{u}) {
+			$_ = $opts->{u} unless defined $_;
+		} else {
+			$_ = '' unless defined $_;
+		}
+	}
+	push @table, [@new_row];
+	warn "Reading '$display_file': Adding row ('",join("','",@new_row)."') table now has ".(@table+0)." rows.\n" if $opts->{v} > 1;
+}
+
+if($opts->{pivot}) {
+	my @new_table;
+	for my $i ( 0 .. $#col_nums ) {
+		my @new_row;
+		foreach my $row (@table) {
+			push @new_row,$row->[$i];
+		}
+		push @new_table, \@new_row;
+		warn "Pivot: Adding row ('",join("','",@new_row)."') table now has ".(@new_table+0)." rows.\n" if $opts->{v} > 1;
+	}
+	@table = @new_table;
+}
+
+warn "Ready to output: table now has ".(@table+0)." rows.\n" if $opts->{v} > 1;
+
+if($opts->{csv}) {
+	foreach my $row (@table) {
+		warn "Output1: row ('",join("','",@$row)."').\n" if $opts->{v} > 1;
+		foreach my $cell (@$row) {
+			if($cell =~ m/[,"\n]/) {
+				$cell =~ s/"/""/g;
+				$cell = "\"$cell\"";
+			}
+		}
+		print OUT join(",",@$row),"\n";
+	}
+} elsif($opts->{tdv}) {
+	foreach my $row (@table) {
+		warn "Output1: row ('",join("','",@$row)."').\n" if $opts->{v} > 1;
+		foreach my $cell (@$row) {
+			$cell =~ s/\t/\\t/g;
+		}
+		print OUT join("\t",@$row),"\n";
+	}
+} else {
+	my ($cd_pres,$rd_pres,$quot_pres) = (0,0,0);
+	my $cd_re = quotemeta($col_delimiter);
+	my $rd_re = quotemeta($row_delimiter);
+	my $quot_re = quotemeta($quote_string);
+	foreach my $row (@table) {
+		foreach my $cell (@$row) {
+			$cd_pres++ if $cell =~ /$cd_re/;
+			$rd_pres++ if $cell =~ /$rd_re/;
+			$quot_pres++ if $quote_string ne '' && $cell =~ /$quot_re/;
+		}
+		print OUT $quote_string,join("$quote_string$col_delimiter$quote_string",@$row),$quote_string,$row_delimiter;
+	}
+	$warnings .= "WARNING: $cd_pres cells had the output column delimiter string '$col_delimiter' in them. This may cause problems.\n"
+		if $cd_pres;
+	$warnings .= "WARNING: $rd_pres cells had the output row delimiter string '$row_delimiter' in them. This may cause problems.\n"
+		if $rd_pres;
+	$warnings .= "WARNING: $quot_pres cells had the quote string '$quote_string' in them. This may cause problems.\n"
+		if $quot_pres;
+}
+
+close(OUT) if($opts->{o});
+
+if($missing) {
+	if(!$max_cols && @rows) {
+		$warnings .= "WARNING: '$display_file' had $num_rows, but did not have any columns.!\n" if $opts->{v};
+	} else {
+		$warnings .= "WARNING: '$display_file' had $missing cells out of ".((@rows+0)*(@col_nums+0))." without a matching column.\n" if $opts->{v};
+		my $col_count = 0;
+		foreach my $col_num (@col_nums) {
+			$col_count++;
+			if($missing_cells->{$col_count} && $missing_cells->{$col_count} == @rows) {
+				$warnings .= "WARNING: Column '$col_num' was not found in any rows.\n" if $opts->{v};
+			} elsif($missing_cells->{$col_count}) {
+				$warnings .= "WARNING: Column '$col_num' had $missing_cells->{$col_count} rows out of ".(@rows+0)." without it.\n" if $opts->{v};
+			}
+		}
+	}
+}
+
+$min_cols = 0 unless $num_rows;
+
+warn "Column Numbers: '",join("','",@col_nums),"'\n" if $opts->{v};
+warn ("Processed '$display_file' with $num_rows rows, min columns $min_cols, max columns $max_cols\n") if $opts->{v};
+
+
+warn $warnings if $warnings && $opts->{v};
+
+exit;
+
+1;
+
+__END__

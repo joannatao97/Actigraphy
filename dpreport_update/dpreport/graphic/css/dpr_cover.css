@@ -1,0 +1,62 @@
+@font-face {
+    font-family: DidactGothic;
+    src: url(./fonts/DidactGothic-Regular.ttf);
+}
+
+html {
+    width: 100%;
+}
+body {
+    width: 98%;
+    padding: 4px;
+    font-family: 'DidactGothic';
+}
+.coverHeader {
+    width: 100%;
+    font-size: 1.5em;
+}
+.coverSubHeader {
+    width: 100%;
+    font-size: 1.25em;
+    color: rgba(0,0,0,0.5);
+}
+table {
+    margin-top: 1em;
+    width: 100%;
+    text-align: center;
+}
+table tr {
+    width:100%;
+}
+.tableHeader th {
+    font-weight: normal;
+    color: rgba(0,0,0,0.7);
+}
+.tableHeader td {
+    color: rgba(0,0,0,0.5);
+}
+.num {
+    width: 2%;
+}
+.subID {
+    width: 5%;
+}
+.days {
+    width: 2%;
+}
+.consent {
+    width: 8%;
+}
+
+th.dataType {
+    width: 13%;
+}
+td.n {
+    width: 8%;
+}
+td.ping {
+    width: 5%;
+}
+.warn {
+    background-color: #f44336;
+}

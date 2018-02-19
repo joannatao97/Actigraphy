@@ -20,6 +20,6 @@ for subdir in ${parentdir}/*
 		/usr/local/bin/matlab -nosplash -nodisplay -nodesktop -nojvm -r "addpath('/eris/sbdp/GSP_Subject_Data/SCRIPTS/gits/custom_scripts/embrace_salvi'); extractRawActData('${subdir}');quit()"
 
 		# Run gplot on all newly-generated CSVs, convert PNGs into a single PDF
-		/eris/sbdp/GSP_Subject_Data/SCRIPTS/gits/custom_scripts/embrace_salvi/autogplot.sh "${subdir}/CSV"
+		/eris/sbdp/GSP_Subject_Data/SCRIPTS/gits/custom_scripts/embrace_salvi/autogplot.sh "${subdir}/processed/binned-hour"
 
 	done

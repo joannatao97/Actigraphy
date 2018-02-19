@@ -1,0 +1,37 @@
+</table>
+        </td>
+    </tr>
+
+    <tr>
+		<td width="100%" valign=top colspan="2">
+			<table border="0" cellspacing="0" width="100%">
+				<tr>
+				<h1 style="margin:auto; padding-bottom:5px; padding-top:5px; background-color:#78909c">Functional Measures</h1>
+					<td width="50%" valign=top>
+						<table border="0" cellspacing="0" width="100%">
+							<tr>
+								<td width="100%" colspan="3">
+									<img src="example_func2bhighres.gif" alt="example_func2bhighres" width="100%">
+								</td>
+							</tr>
+							<tr>
+								<td width="33%" colspan="1">
+									<img src="mc_disp.gif" alt="mc_disp" width="100%">
+								</td>
+								<td width="33%" colspan="1">
+									<img src="mc_trans.gif" alt="mc_trans" width="100%">
+								</td>
+								<td width="33%" colspan="1">
+									<img src="mc_rot.gif" alt="mc_rot" width="100%">
+								</td>
+							</tr>
+						</table>
+					</td>
+					<td width="50%" valign=top rowspan="3">
+						<table border="0" cellspacing="0" width="100%">
+						    
+						    <tr> 
+							    <th bgcolor=#999999>NETWORK</th>
+							    <th bgcolor=#999999>Z-score</th>
+							    <th bgcolor=#999999>Percentile</th>
+						    </tr>

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+table, th, td {
+    border: 1px solid black;
+    }
+</style>
+</head>
+<body margin:0 padding:10>
+<table border="0" cellspacing="0" width="90%">
+    <tr> 
+        <td valign=top width="50%">
+            <table border=0 cellspacing=0 width="100%" style="border-collapse: collapse;">
+                <tr>
+                    <th bgcolor=#999999>Intracranial Volume (cm^3)</th>
+                    <th bgcolor=#999999 colspan="2">ICV Z-score</th>
+                    <th bgcolor=#999999 colspan="2">ICV Percentile</th>
+                </tr>
+  
+ 
