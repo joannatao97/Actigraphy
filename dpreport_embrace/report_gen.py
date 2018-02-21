@@ -1,8 +1,32 @@
+"""
+DP REPORT GENERATOR FOR EMBRACE DATA
+------------------------------------
+Dependencies:
+    pandas
+    numpy
+    jinja2
+    weasyprint
+
+Run:
+  python3 report_gen.py {patientID}
+
+The file requires:
+  (1) DIA.csv:  contains metadata for all patients in the study
+  (2) DIA_combined.png:  results generated from autogplot.sh
+  (3) body_template.html:  HTML template for generating the HTML report
+
+Please note what the report will be generated in the patient's study folder on the server.
+The report is titled DIA_{metadata}_report.html.
+
+Author:     Joshua D. Salvi
+Year:       2018
+"""
+
 import pandas as pd
 import numpy as np
 from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-# import pdfkit
+# from weasyprint import HTML
+import sys
 
 def get_metadata(metadatafile, patientID):
     
@@ -33,16 +57,13 @@ def write_to_html(html_out, htmlfile):
 
 if __name__ == "__main__":
     
-    # Paths
-    patient = "C3LMM"
-    parentdir = "/Users/joshsalvi/Documents/Lab/Lab/Baker/Actigraphy/" + patient + "/"
-    actdata0 = parentdir + "DIA_combined.png"
-    htmlfile = parentdir + "DIA_" + patient + "_annot_embrace_report.html"
-    pdffile = parentdir + "DIA_" + patient + "_annot_embrace_report.pdf"
+    # Define MAIN directory
+    maindir = "/eris/sbdp/PHOENIX/GENERAL/DIA/"
 
     # Get metadata
-    df0 = get_metadata("/Users/joshsalvi/Documents/Lab/Lab/Baker/Actigraphy/DIA.csv", patient)
-
+    patient = sys.argv[1]   # First input is the patient ID (also the name of the folder)
+    df0 = get_metadata("/eris/sbdp/Data/Baker/DIA/DIA.csv", patient)
+    
     # Extract individual data
     study = df0['Study'].values
     patient = df0['SubjectID'].values
@@ -51,11 +72,17 @@ if __name__ == "__main__":
     actID = df0['actigraphyID'].values
     embID = df0['embraceID'].values
 
+    # Paths
+    parentdir = maindir + patient + "/actigraphy/processed/binned-hour"
+    actdata0 = parentdir + "DIA_combined.png"
+    htmlfile = parentdir + "DIA_" + patient + "_annot_embrace_report_consent" + consentdate[0].replace('-', '') + ".html"
+    pdffile = parentdir + "DIA_" + patient + "_annot_embrace_report_consent" + consentdate[0].replace('-', '') + ".pdf"
+
     # Render and output HTML file
-    html_output = html_renderer("body_template.html", study[0], patient[0], consentdate[0], comments[0], actID[0], embID[0], actdata0)
-    write_to_html(html_output, htmlfile)
+    html_output = html_renderer("body_template.html", study[0], patient[0], consentdate[0], comments[0], actID[0], embID[0], actdata0[0])
+    write_to_html(html_output, htmlfile[0])
 
     # Write to PDF
-    pdf = HTML(htmlfile).write_pdf()
-    file(pdffile, 'w').write(pdf)
+    # pdf = HTML(htmlfile[0]).write_pdf()
+    # file(pdffile[0], 'w').write(pdf)
     

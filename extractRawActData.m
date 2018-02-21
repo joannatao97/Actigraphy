@@ -1,4 +1,4 @@
-function [s] = extractRawActData(dir01, tz)
+function [s] = extractRawActData(dir01, tz, patient)
 %
 % Actigraphy QC Analysis
 % ----------------------
@@ -16,7 +16,7 @@ function [s] = extractRawActData(dir01, tz)
 %       (4) An optional second argument, `tz`, can be used to specify the
 %       time zone as either EDT or EST, where tz equals UTC-4 or UTC-5 in
 %       either case. By default, tz = -4.
-%
+
 % ----------------------
 % Author: Joshua D. Salvi
 % josh.salvi@gmail.com
@@ -52,7 +52,7 @@ function [s] = extractRawActData(dir01, tz)
 
     % Import processed survey data (from DIA_summ.sh)
     dir0RC = [dir01 'surveys/processed/'];
-    files = dir(dir0RC);
+    files = dir(dir0RC); clear data
     for p0 = 1:length(files)
         try
             if isempty(findstr(files(p0).name,'_events_trans.csv')) == 0
@@ -67,7 +67,7 @@ function [s] = extractRawActData(dir01, tz)
                 end
             end
         catch
-
+            disp('No survey data')
         end      
     end
 
@@ -81,6 +81,7 @@ function [s] = extractRawActData(dir01, tz)
         temp(:,1) = temp(:,1)./86400./1e3 + unix_epoch;
         eda(:,1) = eda(:,1)./86400./1e3 + unix_epoch;
     catch
+        disp('Unable to convert time (Line 78)')
     end
 
     % Extract timestamps from survey data
@@ -95,6 +96,7 @@ function [s] = extractRawActData(dir01, tz)
             end
         end
     catch
+        disp('Unable to extract RC data (Line 90)')
     end
 
     % Initialize activity annotation matrices to NaN arrays
@@ -104,6 +106,8 @@ function [s] = extractRawActData(dir01, tz)
         RCvals = NaN(length(RCu{1}), length(RCu{2}), 31, 24, 60, 60);
         RCu = [{unique(RCdate(1,:))}, {unique(RCdate(2,:))}, {unique(RCdate(3,:))}, {unique(RCdate(4,:))}, {unique(RCdate(5,:))}, {unique(RCdate(6,:))}];        
     catch
+        disp('Unable to extract RC data (Line 104)')
+        RCvals = NaN(1, 1, 31, 24, 60, 60);
     end
 
     % Generate vector for each type of activity level (1=still; 2=slow; 3=moderate; 4=vigorous)
@@ -172,7 +176,7 @@ function [s] = extractRawActData(dir01, tz)
 
                     RCvals(y1:y2,m1:m2,d1:d2,h1:h2,min1:min2,s1:s2) = 3;
                 end
-            catchh
+            catch
             end
         elseif isempty(findstr(RCstate{q},':vigorous')) == 0
             try
@@ -198,6 +202,7 @@ function [s] = extractRawActData(dir01, tz)
         end
     end
     catch
+        disp('Unable to process RC data (Line 115)')
     end
     
     % Find the mean over each minute (averaging over seconds)
@@ -209,10 +214,13 @@ function [s] = extractRawActData(dir01, tz)
         s.RCu = RCu;
         s.RCinterp_min = RCvals_min;
     catch
+        disp('Unable to output RC data (Line 209)')
+        RCvals_min = nanmean(RCvals,6);
+        s.RCinterp = RCvals;
+        s.RCinterp_min = RCvals_min;
     end
 
     % Time stamps from actigraphy data
-    try
         accdate = [month(acc(:,1))'; day(acc(:,1))'; hour(acc(:,1))'; minute(acc(:,1))'];
         tempdate = [month(temp(:,1))'; day(temp(:,1))'; hour(temp(:,1))'; minute(temp(:,1))'];
         edadate = [month(eda(:,1))'; day(eda(:,1))'; hour(eda(:,1))'; minute(eda(:,1))'];
@@ -221,8 +229,7 @@ function [s] = extractRawActData(dir01, tz)
         accu = [{unique(accdate(1,:))}; {unique(accdate(2,:))}; {unique(accdate(3,:))}; {unique(accdate(4,:))}];
         tempu = [{unique(tempdate(1,:))}; {unique(tempdate(2,:))}; {unique(tempdate(3,:))}; {unique(tempdate(4,:))}];
         edau = [{unique(edadate(1,:))}; {unique(edadate(2,:))}; {unique(edadate(3,:))}; {unique(edadate(4,:))}];       
-    catch
-    end
+
     try
         monthsmax = max([length(accu{1}) length(tempu{1}) length(edau{1}) length(RCu{1})]);
     catch
@@ -247,9 +254,11 @@ function [s] = extractRawActData(dir01, tz)
         velRS_Pxx = cell([monthsmax, 31, 24, 60]);
         velRS_fxx = cell([monthsmax, 31, 24, 60]);
     catch
+        disp('Unable to initialize variables (Line 247)')
     end
 
     % Loop through each minute of acceleration data
+    disp('ACC extraction...')
     try
         for j = 1:length(accu{1})
             for k = 1:length(accu{2})
@@ -299,15 +308,16 @@ function [s] = extractRawActData(dir01, tz)
                             velRSmean(j,accu{2}(k),accu{3}(l)+1,accu{4}(m)+1) = NaN;
                             velRSvar(j,accu{2}(k),accu{3}(l)+1,accu{4}(m)+1) = NaN;
                         end
-                        ind = ind+1;
                     end
                 end
             end
         end
     catch
+        disp('Unable to process ACC data (Line 261)')
     end
 
     % Loop through each time point in the temperature vector
+    disp('TEMP extraction...')
     try
         tempmax = NaN([monthsmax, 31, 24, 60]);
         tempvar = tempmax; tempmean = tempmax;
@@ -324,7 +334,6 @@ function [s] = extractRawActData(dir01, tz)
                         tempmax(j,tempu{2}(k),tempu{3}(l)+1,tempu{4}(m)+1) = nanmax(temp(c,2));
                         tempmean(j,tempu{2}(k),tempu{3}(l)+1,tempu{4}(m)+1) = nanmean(temp(c,2));
                         tempvar(j,tempu{2}(k),tempu{3}(l)+1,tempu{4}(m)+1) = nanvar(temp(c,2));
-
                         catch
                             tempmax(j,tempu{2}(k),tempu{3}(l)+1,tempu{4}(m)+1) = NaN;
                             tempmean(j,tempu{2}(k),tempu{3}(l)+1,tempu{4}(m)+1) = NaN;
@@ -335,9 +344,11 @@ function [s] = extractRawActData(dir01, tz)
             end
         end
     catch
+        disp('Unable to process TEMP data (Line 319)')
     end
 
     % Loop through each time point in the eda (skin conductivity) vector
+    disp('EDA Extraction...')
     try
         edamax = NaN([monthsmax, 31, 24, 60]);
         edavar = edamax; edamean = edamax;
@@ -364,40 +375,45 @@ function [s] = extractRawActData(dir01, tz)
             end
         end
     catch
+        disp('Unable to process EDA data (Line 351)')
     end
 
     % Save data to a structure with Patient ID and all relevant measures
     try
-        s.Patient = patients;
+        s.Patient = patient;
         s.ACCmean = velRSmean; s.ACCmax = velRSmax; s.ACCvar = velRSvar;
         s.TEMPmean = tempmean; s.TEMPmax = tempmax; s.TEMPvar = tempvar;
         s.EDAmean = edamean; s.EDAmax = edamax; s.EDAvar = edavar;
         s.ACCtimes = accu; s.TEMPtimes = tempu; s.EDAtimes = edau; 
     catch
+        disp('Cannot save actigraphy data (Line 381)')
     end
     try
-        s.velRS_Pxx = velRS_pxx; s.velRS_fxx = velRS_fxx; 
-        s.velRS_Pxx_0to1Hz = velRS_Pxx_0to1Hz; s.velRS_Pxx_1to2Hz = velRS_Pxx_1to2Hz; s.velRS_Pxx_2to3Hz = velRS_Pxx_2to3Hz; s.velRS_Pxx_3to4Hz = velRS_Pxx_3to4Hz; s.velRS_Pxx_4to5Hz = velRS_Pxx_4to5Hz;
-        s.velRS_Pxx_5to6Hz = velRS_Pxx_5to6Hz; s.velRS_Pxx_6to7Hz = velRS_Pxx_6to7Hz; s.velRS_Pxx_7to8Hz = velRS_Pxx_7to8Hz; s.velRS_Pxx_8to9Hz = velRS_Pxx_8to9Hz; s.velRS_Pxx_9to10Hz = velRS_Pxx_9to10Hz;
-        s.velRS_Pxx_10to11Hz = velRS_Pxx_10to11Hz; s.velRS_Pxx_11to12Hz = velRS_Pxx_11to12Hz; s.velRS_Pxx_12to13Hz = velRS_Pxx_12to13Hz; s.velRS_Pxx_13to14Hz = velRS_Pxx_13to14Hz; s.velRS_Pxx_14to15Hz = velRS_Pxx_14to15Hz;
+        s.velRS_Pxx = velRS_Pxx; s.velRS_fxx = velRS_fxx; 
+        s.velRS_Pxx_0to1Hz = velRS_pxx_0to1Hz; s.velRS_Pxx_1to2Hz = velRS_pxx_1to2Hz; s.velRS_Pxx_2to3Hz = velRS_pxx_2to3Hz; s.velRS_Pxx_3to4Hz = velRS_pxx_3to4Hz; s.velRS_Pxx_4to5Hz = velRS_pxx_4to5Hz;
+        s.velRS_Pxx_5to6Hz = velRS_pxx_5to6Hz; s.velRS_Pxx_6to7Hz = velRS_pxx_6to7Hz; s.velRS_Pxx_7to8Hz = velRS_pxx_7to8Hz; s.velRS_Pxx_8to9Hz = velRS_pxx_8to9Hz; s.velRS_Pxx_9to10Hz = velRS_pxx_9to10Hz;
+        s.velRS_Pxx_10to11Hz = velRS_pxx_10to11Hz; s.velRS_Pxx_11to12Hz = velRS_pxx_11to12Hz; s.velRS_Pxx_12to13Hz = velRS_pxx_12to13Hz; s.velRS_Pxx_13to14Hz = velRS_pxx_13to14Hz; s.velRS_Pxx_14to15Hz = velRS_pxx_14to15Hz;
     catch
+        disp('Cannot save actigraphy data (Line 390)')
     end  
-    
+
     % Save the structure to a MAT file
+    disp('Saving MAT files...')
     try
-        save([dir01 'processed/ExtractedData.mat'],'s','-v7.3');
+        save([dir01 'actigraphy/processed/ExtractedData.mat'],'s','-v7.3');
     catch
+        disp('Unable to save data (Line 400)')
     end
     
     
     % Create CSV files, with one CSV per hour
     % Header
+    disp('Saving CSV files...')
     header = {'activity level','mean(temp)','log mean(eda)','log var(acc dRMS)','acc PSD: 0-1 Hz','acc PSD 1-2 Hz','acc PSD 2-3 Hz','acc PSD 3-4 Hz','acc PSD 4-5 Hz','acc PSD 5-6 Hz','acc PSD 6-7 Hz','acc PSD 7-8 Hz','acc PSD 8-9 Hz','acc PSD 9-10 Hz','acc PSD 10-11 Hz','acc PSD 11-12 Hz','acc PSD 12-13 Hz','acc PSD 13-14 Hz','acc PSD 14-15 Hz'};
     try
         daymin = min(s.EDAtimes{2}); daymax = max(s.EDAtimes{2});
         for q = 1:length(s.EDAtimes{1})
             for k = daymin:daymax
-
                 % Extract values
                 acc = squeeze(s.ACCvar(q,k,:,:)); logacc = log(acc);
                 temp = squeeze(s.TEMPmean(q,k,:,:)); temp(temp>40) = NaN; temp(temp<25) = NaN;
@@ -434,7 +450,7 @@ function [s] = extractRawActData(dir01, tz)
                     % Make directory where CSVs will be saved
                     try
                         warning off
-                        mkdir([dir01 'processed/binned-hour/'])
+                        mkdir([dir01 'actigraphy/processed/binned-hour/'])
                     catch
                     end
                     
@@ -450,9 +466,11 @@ function [s] = extractRawActData(dir01, tz)
                         
                         if l-1 >= 10
                             % Write to CSV
-                            csvwrite_with_headers([dir01 'processed/binned-hour/' s.Patient '/' 'DIA_' s.Patient '_annot_embrace' '_all_accPSDdf1Hz' '_month' month0 '_day' day0 '_hour' num2str(l-1) '.csv'],mat',header);
+                            disp([dir01 'actigraphy/processed/binned-hour/' 'DIA_' s.Patient '_annot_embrace' '_all_accPSDdf1Hz' '_month' month0 '_day' day0 '_hour' num2str(l-1) '.csv'])
+                            csvwrite_with_headers([dir01 'actigraphy/processed/binned-hour/' 'DIA_' s.Patient '_annot_embrace' '_all_accPSDdf1Hz' '_month' month0 '_day' day0 '_hour' num2str(l-1) '.csv'],mat',header);
                         else
-                            csvwrite_with_headers([dir01 'processed/binned-hour/' s.Patient '/' 'DIA_' s.Patient '_annot_embrace' '_all_accPSDdf1Hz' '_month' month0 '_day' day0 '_hour0' num2str(l-1) '.csv'],mat',header);
+                            disp([dir01 'actigraphy/processed/binned-hour/' 'DIA_' s.Patient '_annot_embrace' '_all_accPSDdf1Hz' '_month' month0 '_day' day0 '_hour0' num2str(l-1) '.csv'])     
+                            csvwrite_with_headers([dir01 'actigraphy/processed/binned-hour/' 'DIA_' s.Patient '_annot_embrace' '_all_accPSDdf1Hz' '_month' month0 '_day' day0 '_hour0' num2str(l-1) '.csv'],mat',header);
                         end
                     end
                 end
@@ -460,7 +478,9 @@ function [s] = extractRawActData(dir01, tz)
             end
         end
     catch
-    end   
+        disp('Unable to output to CSV (Line 410)')
+    end
+    disp('Complete.')   
 end    
 
 function [r,c,V] = findnearest(srchvalue,srcharray,bias)
@@ -525,3 +545,162 @@ function csvwrite_with_headers(filename,m,headers,r,c)
     fclose(fid);
     dlmwrite(filename, m,'-append','delimiter',',','roffset', r,'coffset',c);
 end
+
+function y = year(d,f) 
+    if nargin < 1 
+      error(message('finance:year:missingInputs')) 
+    end 
+    if nargin < 2
+      f = '';
+    end
+    tFlag = false;   %Keep track if input was character array 
+    if ischar(d) 
+      d = datenum(d,f); 
+      tFlag = true;
+    end 
+    % Generate date vectors
+    if nargin < 2 || tFlag
+      c = datevec(d(:));
+    else
+      c = datevec(d(:),f);
+    end
+    y = c(:,1);             % Extract years  
+    if ~ischar(d) 
+      y = reshape(y,size(d)); 
+    end 
+end
+
+function [n, m] = month(d,f)
+    if nargin < 1
+        error(message('finance:month:missingInput'))
+    end
+    if nargin < 2
+      f = '';
+    end
+    tFlag = false;   %Keep track if input was character array 
+    if ischar(d)
+        d = datenum(d,f);
+        tFlag = true;
+    end
+    % Generate date vectors
+    if nargin < 2  || tFlag
+      c = datevec(d(:));
+    else
+      c = datevec(d(:),f);
+    end
+    % Monthly strings
+    mths = ['NaN';'Jan';'Feb';'Mar';'Apr';'May';'Jun';'Jul'; ...
+        'Aug';'Sep';'Oct';'Nov';'Dec'];
+
+    % Extract numeric months
+    n = c(:, 2);
+
+    % Keep track of nan values.
+    nanLoc = isnan(n);
+
+    % Extract monthly strings. (c(:, 2) == 0) handles the case when d = 0.
+    mthIdx = c(:, 2) + (c(:, 2) == 0);
+    mthIdx(nanLoc) = 0;
+    m = mths(mthIdx + 1, :);
+
+    % Preserve the dims of the inputs for n. m is a char array so it should be
+    % column oriented.
+    if ~ischar(d)
+        n = reshape(n, size(d));
+    end
+end
+
+function dom = day(d,f) 
+    if nargin < 1 
+      error(message('finance:day:missingInputs')) 
+    end 
+    if nargin < 2
+      f = '';
+    end
+    tFlag = false;   %Keep track if input was character array 
+    if ischar(d)
+        d = datenum(d,f);
+        tFlag = true;
+    end
+    % Generate date vectors
+    if nargin < 2  || tFlag
+      c = datevec(d(:));
+    else
+      c = datevec(d(:),f);
+    end
+    dom = c(:,3);            % Extract day of month 
+    if ~ischar(d) 
+      dom = reshape(dom,size(d)); 
+    end
+end
+
+function h = hour(d,f) 
+    if nargin < 1 
+      error(message('finance:hour:missingInputs')) 
+    end 
+    if nargin < 2
+      f = '';
+    end
+    tFlag = false;   %Keep track if input was character array 
+    if ischar(d)
+        d = datenum(d,f);
+        tFlag = true;
+    end
+    % Generate date vectors
+    if nargin < 2  || tFlag
+      c = datevec(d(:));
+    else
+      c = datevec(d(:),f);
+    end
+    h = c(:,4);     % Extract hour 
+    if ~ischar(d) 
+      h = reshape(h,size(d)); 
+    end
+end
+
+function m = minute(d,f)
+    if nargin < 1
+       error(message('finance:minute:missingInputs'))
+    end
+    if nargin < 2
+      f = '';
+    end
+    if ischar(d) 
+       d = datenum(d,f);
+       sizeD = size(d); 
+    elseif iscell(d)
+       sizeD = size(d);   
+       d = datenum(d(:),f);
+    elseif isnumeric(d)
+       sizeD = size(d); 
+    else
+       error(message('finance:minute:invalidInputClass'))
+    end
+    % Generate date vectors from dates
+    c = datevecmx(d(:), 1);
+    % Extract minute
+    m = c(:, 5);
+    % Reshape into the correct dims
+    m = reshape(m, sizeD);
+end
+
+function s = second(d,f)
+    if nargin < 1
+       error(message('finance:second:missingInputs'))
+    end
+    if nargin < 2
+      f = '';
+    end
+    if ischar(d)
+       d = datenum(d,f);
+       sizeD = size(d);
+    elseif iscell(d)
+       sizeD = size(d);
+       d = datenum(d(:),f);
+    elseif isnumeric(d)
+       sizeD = size(d);
+    else
+       error(message('finance:second:invalidInputClass'))
+    end
+end
+
