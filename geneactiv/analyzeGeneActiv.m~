@@ -71,36 +71,35 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, switch0)
             [s.ambtemp_split_psd(:,j), s.fxx] = pwelch(s.ambtemp_split(:,j) - mean(s.ambtemp_split(:,j)),[],[],[],s.scan_rate);
 
             try
-                [s.acc_x_SD_split_psd(:,j), s.fxx] = pwelch(s.acc_x_SD_split(:,j) - mean(s.acc_x_SD_split(:,j)),[],[],[],s.scan_rate);
-                [s.acc_y_SD_split_psd(:,j), s.fxx] = pwelch(s.acc_y_SD_split(:,j) - mean(s.acc_y_SD_split(:,j)),[],[],[],s.scan_rate);
-                [s.acc_z_SD_split_psd(:,j), s.fxx] = pwelch(s.acc_z_SD_split(:,j) - mean(s.acc_z_SD_split(:,j)),[],[],[],s.scan_rate);
-                [s.lux_peak_split_psd(:,j), s.fxx] = pwelch(s.lux_peak_split(:,j) - mean(s.lux_peak_split(:,j)),[],[],[],s.scan_rate);
-                [s.acc_sum_split_psd(:,j), s.fxx] = pwelch(s.acc_sum_split(:,j) - mean(s.acc_sum_split(:,j)),[],[],[],s.scan_rate);
+                [s.acc_x_SD_split_psd(:,j), s.fxx] = pwelch(s.acc_x_SD_split(:,j),[],[],[],s.scan_rate);
+                [s.acc_y_SD_split_psd(:,j), s.fxx] = pwelch(s.acc_y_SD_split(:,j),[],[],[],s.scan_rate);
+                [s.acc_z_SD_split_psd(:,j), s.fxx] = pwelch(s.acc_z_SD_split(:,j),[],[],[],s.scan_rate);
+                [s.lux_peak_split_psd(:,j), s.fxx] = pwelch(s.lux_peak_split(:,j),[],[],[],s.scan_rate);
+                [s.acc_sum_split_psd(:,j), s.fxx] = pwelch(s.acc_sum_split(:,j),[],[],[],s.scan_rate);
             catch
             end
         end
     elseif switch0 == 2
         % Choose bin size in seconds and percent overlap
-        s.Nsec = 1;
+        s.Nsec = 10;
         s.noverlap = 0;
-        s.freqvec = 0:0.1:s.scan_rate/2;
         
         % Calculate bin size 
         chunk_size = s.scan_rate * s.Nsec;
         
         % Calculate spectrograms
-        [s.acc_x_spec, s.freqs, s.times] = spectrogram(s.acc_x - mean(s.acc_x), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
-        [s.acc_y_spec, s.freqs, s.times] = spectrogram(s.acc_y - mean(s.acc_y), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
-        [s.acc_z_spec, s.freqs, s.times] = spectrogram(s.acc_z - mean(s.acc_z), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
-        [s.lux_spec, s.freqs, s.times] = spectrogram(s.lux - mean(s.lux), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
-        [s.ambtemp_spec, s.freqs, s.times] = spectrogram(s.ambtemp - mean(s.ambtemp), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
+        [s.acc_x_spec, s.freqs, s.times] = spectrogram(s.acc_x - mean(s.acc_x), chunk_size, s.noverlap, [], s.scan_rate);
+        [s.acc_y_spec, s.freqs, s.times] = spectrogram(s.acc_y - mean(s.acc_y), chunk_size, s.noverlap, [], s.scan_rate);
+        [s.acc_z_spec, s.freqs, s.times] = spectrogram(s.acc_z - mean(s.acc_z), chunk_size, s.noverlap, [], s.scan_rate);
+        [s.lux_spec, s.freqs, s.times] = spectrogram(s.lux - mean(s.lux), chunk_size, s.noverlap, [], s.scan_rate);
+        [s.ambtemp_spec, s.freqs, s.times] = spectrogram(s.ambtemp - mean(s.ambtemp), chunk_size, s.noverlap, [], s.scan_rate);
         
         try
-            [s.acc_x_SD_spec, s.freqs, s.times] = spectrogram(s.acc_x_SD - mean(s.acc_x_SD), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
-            [s.acc_y_SD_spec, s.freqs, s.times] = spectrogram(s.acc_y_SD - mean(s.acc_y_SD), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
-            [s.acc_z_SD_spec, s.freqs, s.times] = spectrogram(s.acc_z_SD - mean(s.acc_z_SD), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
-            [s.lux_peak_spec, s.freqs, s.times] = spectrogram(s.lux_peak - mean(s.lux_peak), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
-            [s.acc_sum_spec, s.freqs, s.times] = spectrogram(s.acc_sum - mean(s.acc_sum), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
+            [s.acc_x_SD_spec, s.freqs, s.times] = spectrogram(s.acc_x_SD - mean(s.acc_x_SD), chunk_size, s.noverlap, [], s.scan_rate);
+            [s.acc_y_SD_spec, s.freqs, s.times] = spectrogram(s.acc_y_SD - mean(s.acc_y_SD), chunk_size, s.noverlap, [], s.scan_rate);
+            [s.acc_z_SD_spec, s.freqs, s.times] = spectrogram(s.acc_z_SD - mean(s.acc_z_SD), chunk_size, s.noverlap, [], s.scan_rate);
+            [s.lux_peak_spec, s.freqs, s.times] = spectrogram(s.lux_peak - mean(s.lux_peak), chunk_size, s.noverlap, [], s.scan_rate);
+            [s.acc_sum_spec, s.freqs, s.times] = spectrogram(s.acc_sum - mean(s.acc_sum), chunk_size, s.noverlap, [], s.scan_rate);
         catch
         end
     end
