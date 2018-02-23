@@ -29,6 +29,7 @@ for subdir in ${parentdir}/*
 
         # Generate report
         echo "Generating report..."
+        module load miniconda2/3.19.0
         python ${scriptsdir}/dpreport_embrace/report_gen.py $(basename $subdir)
     
         # Create PDF with wkhtmltopdf
