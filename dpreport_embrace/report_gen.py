@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 DP REPORT GENERATOR FOR EMBRACE DATA
 ------------------------------------
@@ -27,6 +29,8 @@ import numpy as np
 from jinja2 import Environment, FileSystemLoader
 # from weasyprint import HTML
 import sys
+import shutil
+import os
 
 def get_metadata(metadatafile, patientID):
     
@@ -42,7 +46,7 @@ def html_renderer(html_template, study, patient, consentdate, comments, actID, e
     # Use HTML template and replace all {{___}} with appropriate variables
     env = Environment(loader=FileSystemLoader('.'))
     template = env.get_template(html_template)
-    template_vars = {"_subid_" : patient, "_study_" : "DIA", "_actID_" : actID, "_consent_" : consentdate, "_subid_" : patient, "_embraceID_" : embID, "_comments_" : comments, "act_src" : actdata}
+    template_vars = {"_subid_" : patient, "_study_" : study, "_actID_" : actID, "_consent_" : consentdate, "_subid_" : patient, "_embraceID_" : embID, "_comments_" : comments, "act_src" : actdata}
     html_out = template.render(template_vars)
     
     return html_out
@@ -59,6 +63,7 @@ if __name__ == "__main__":
     
     # Define MAIN directory
     maindir = "/eris/sbdp/PHOENIX/GENERAL/DIA/"
+    templatedir = "/eris/sbdp/GSP_Subject_Data/SCRIPTS/gits/custom_scripts/embrace_salvi/dpreport_embrace/"
 
     # Get metadata
     patient = sys.argv[1]   # First input is the patient ID (also the name of the folder)
@@ -73,10 +78,16 @@ if __name__ == "__main__":
     embID = df0['embraceID'].values
 
     # Paths
-    parentdir = maindir + patient + "/actigraphy/processed/binned-hour"
-    actdata0 = parentdir + "DIA_combined.png"
-    htmlfile = parentdir + "DIA_" + patient + "_annot_embrace_report_consent" + consentdate[0].replace('-', '') + ".html"
-    pdffile = parentdir + "DIA_" + patient + "_annot_embrace_report_consent" + consentdate[0].replace('-', '') + ".pdf"
+    parentdir = maindir + patient + "/actigraphy/processed/binned-hour/"
+    actdata0 = parentdir + "reports/DIA_combined.png"
+    htmlfile = parentdir + "reports/" + study + "_" + patient + "_annot_embrace_report_consent" + consentdate[0].replace('-', '') + ".html"
+    pdffile = parentdir + "reports/" + study + "_" + patient + "_annot_embrace_report_consent" + consentdate[0].replace('-', '') + ".pdf"
+    iconssource = templatedir + "ICONS/"
+    iconsdest = parentdir[0] + "reports/ICONS/"
+
+    # Copy ICONS folder from /.../GSP_Subject_Data/... to subject directory
+    if not os.path.exists(iconsdest):
+        shutil.copytree(iconssource, iconsdest, symlinks=False, ignore=None)
 
     # Render and output HTML file
     html_output = html_renderer("body_template.html", study[0], patient[0], consentdate[0], comments[0], actID[0], embID[0], actdata0[0])

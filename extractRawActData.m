@@ -14,8 +14,8 @@ function [s] = extractRawActData(dir01, tz, patient)
 %       (3) The program will create a subfolder with CSVs (one per hour)
 %       with the actigraphy and redcap data included for use in gplot.
 %       (4) An optional second argument, `tz`, can be used to specify the
-%       time zone as either EDT or EST, where tz equals UTC-4 or UTC-5 in
-%       either case. By default, tz = -4.
+%       time zone, where tz equals UTC-tz (e.g. EDT is tz-4, EST is tz-5).
+%       By default, tz = 0 (UTC).
 
 % ----------------------
 % Author: Joshua D. Salvi
@@ -34,6 +34,7 @@ function [s] = extractRawActData(dir01, tz, patient)
     files = dir(dir0Act);
 
     % Import Embrace actigraphy data
+    acc = []; eda = []; temp = [];
     for p0 = 1:length(files)
         try
             if isempty(strfind(files(p0).name,'acc.csv')) == 0
@@ -53,27 +54,25 @@ function [s] = extractRawActData(dir01, tz, patient)
     % Import processed survey data (from DIA_summ.sh)
     dir0RC = [dir01 'surveys/processed/'];
     files = dir(dir0RC); clear data
-    for p0 = 1:length(files)
+    for p0 = 3:length(files)
         try
-            if isempty(findstr(files(p0).name,'_events_trans.csv')) == 0
+            if isempty(strfind(files(p0).name,'_events_trans.csv')) == 0
+                disp([dir0RC files(p0).name])
                 data = importdata([dir0RC files(p0).name]);
-                try
-                    RCraw = data.data; RCrawTS = data.textdata(:,5);
-                catch
-                end
-                try
-                    RCraw = data; RCrawTS = data.textdata(:,5);
-                catch
-                end
+                % try
+                %     RCraw = data; 
+                %     RCrawTS = data;
+                % catch
+                % end
             end
         catch
-            disp('No survey data')
+            % disp('No survey data')
         end      
     end
 
     % Convert UNIX time in ms to MATLAB time
     if exist('tz') == 0
-        tz = -4;
+        tz = 0;
     end
     try
         unix_epoch = datenum(1970,1,1,tz,0,0);
@@ -86,19 +85,18 @@ function [s] = extractRawActData(dir01, tz, patient)
 
     % Extract timestamps from survey data
     p0=1;
+    RCdate = [];
     try
         for j = 2:length(data)
             try
                 RCrawTS{p0} = data{j}(7:25);
-                RCdate(p0,:,:,:,:,:,:) = [year(RCrawTS{p0}), month(RCrawTS{p0}), day(RCrawTS{p0}), hour(RCrawTS{p0}), minute(RCrawTS{p0}), second(RCrawTS{p0})];
+                RCdate(p0,:,:,:,:,:,:) = [str2num(RCrawTS{p0}(1:4)); str2num(RCrawTS{p0}(6:7)); str2num(RCrawTS{p0}(9:10));  str2num(RCrawTS{p0}(12:13));  str2num(RCrawTS{p0}(15:16));  str2num(RCrawTS{p0}(18:19))];
                 RCstate{p0} = data{j}(27:end);
                 p0 = p0+1;
             end
         end
-    catch
-        disp('Unable to extract RC data (Line 90)')
     end
-
+    
     % Initialize activity annotation matrices to NaN arrays
     try
         RCdate = RCdate';
@@ -221,6 +219,7 @@ function [s] = extractRawActData(dir01, tz, patient)
     end
 
     % Time stamps from actigraphy data
+    try
         accdate = [month(acc(:,1))'; day(acc(:,1))'; hour(acc(:,1))'; minute(acc(:,1))'];
         tempdate = [month(temp(:,1))'; day(temp(:,1))'; hour(temp(:,1))'; minute(temp(:,1))'];
         edadate = [month(eda(:,1))'; day(eda(:,1))'; hour(eda(:,1))'; minute(eda(:,1))'];
@@ -229,6 +228,8 @@ function [s] = extractRawActData(dir01, tz, patient)
         accu = [{unique(accdate(1,:))}; {unique(accdate(2,:))}; {unique(accdate(3,:))}; {unique(accdate(4,:))}];
         tempu = [{unique(tempdate(1,:))}; {unique(tempdate(2,:))}; {unique(tempdate(3,:))}; {unique(tempdate(4,:))}];
         edau = [{unique(edadate(1,:))}; {unique(edadate(2,:))}; {unique(edadate(3,:))}; {unique(edadate(4,:))}];       
+    catch
+    end
 
     try
         monthsmax = max([length(accu{1}) length(tempu{1}) length(edau{1}) length(RCu{1})]);

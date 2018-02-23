@@ -6,13 +6,19 @@ studydir=$1
 echo "Running gplot..."
 for file in ${studydir}/DIA*.csv
     do
-        gplot.sh "$file" 0 1
+        if [ -f "$file" ]; then
+            gplot.sh "$file" 0 1
+        fi
     done
 
 # Combine PNGs from gplot.sh into single PDF with annotations
 echo "Converting to PDF..."
-convert -fill black -undercolor white -pointsize 36 -gravity SouthWest -annotate +10+10 %t ${studydir}/DIA_*.png ${studydir}/DIA_combined.pdf
+mkdir ${studydir}/reports
+convert -fill black -undercolor white -pointsize 36 -gravity SouthWest -annotate +10+10 %t ${studydir}/DIA_*.png ${studydir}/reports/DIA_combined.pdf
+# fi
 
 # Convert PDF to PNG
 echo "Converting to PNG..."
-convert -append -density 150 ${studydir}/DIA_combined.pdf -quality 90 ${studydir}/DIA_combined.png
+convert -append -density 150 ${studydir}/reports/DIA_combined.pdf -quality 90 ${studydir}/reports/DIA_combined.png
+# convert -append -density 150 ${studydir}/DIA_combined.pdf -quality 90 ${studydir}/DIA_combined.gif
+
