@@ -10,21 +10,29 @@ annot = importdata('/Users/joshsalvi/Documents/GENEActiv/Data/JDS/processed/GA_J
 for j = 1:length(annot)
     annot{j} = strsplit(annot{j},',');
 end
-clear j
+clear jc
+
+%%
+s.datatimes0.year = year(s.datatimes);
+s.datatimes0.month = month(s.datatimes);
+s.datatimes0.day = day(s.datatimes);
+s.datatimes0.minute = minute(s.datatimes);
+s.datatimes0.hour = hour(s.datatimes); 
 
 %% Label activities
-s.activities = NaN(length(s.datatimes));
+s.activities = NaN(1,length(s.datatimes));
+
 for j = 2:length(annot)
     try
-        a = intersect(find(year(s.datatimes)==year(annot{j}{2})),find(month(s.datatimes)==month(annot{j}{2})));
-        b = intersect(find(day(s.datatimes)==day(annot{j}{2})),find(hour(s.datatimes)==hour(annot{j}{2})));
-        c = find(minute(s.datatimes)==minute(annot{j}{2}));
+        a = intersect(find(s.datatimes0.year==year(annot{j}{2})),find(s.datatimes0.month==month(annot{j}{2})));
+        b = intersect(s.datatimes0.day==day(annot{j}{2}),find(s.datatimes0.hour==hour(annot{j}{2})));
+        c = find(s.datatimes0.minute==minute(annot{j}{2}));
         d = intersect(a,b);
         indStart = intersect(c,d);
         
-        a = intersect(find(year(s.datatimes)==year(annot{j}{3})),find(month(s.datatimes)==month(annot{j}{3})));
-        b = intersect(find(day(s.datatimes)==day(annot{j}{3})),find(hour(s.datatimes)==hour(annot{j}{3})));
-        c = find(minute(s.datatimes)==minute(annot{j}{3}));
+        a = intersect(find(s.datatimes0.year==year(annot{j}{3})),find(s.datatimes0.month==month(annot{j}{3})));
+        b = intersect(s.datatimes0.day==day(annot{j}{3}),find(s.datatimes0.hour==hour(annot{j}{3})));
+        c = find(s.datatimes0.minute==minute(annot{j}{3}));
         d = intersect(a,b);
         indStop = intersect(c,d);
         

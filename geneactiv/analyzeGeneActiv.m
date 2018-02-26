@@ -22,7 +22,7 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, binsize, switch0)
 
     % Extract raw data information
     disp('Extracting data...')
-    s.datatimes = s.rawdata.textdata;
+    s.datatimes = ellfun(@(x) x(1:end-4),s.rawdata.textdata,'UniformOutput',false);
     s.acc_x = s.rawdata.data(:,1); s.acc_y = s.rawdata.data(:,2); s.acc_z = s.rawdata.data(:,3);
     s.lux = s.rawdata.data(:,4); s.button = s.rawdata.data(:,5); s.ambtemp = s.rawdata.data(:,6);
     try
@@ -141,12 +141,13 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, binsize, switch0)
 
         % Perform t-SNE
         disp('tSNE...')
-        [s.M_acc_tsne_coeff, s.M_acc_tsne_loss] = tsne(s.M_acc,'Standardize',1,'NumDimensions',2);
+%         [s.M_acc_tsne_coeff, s.M_acc_tsne_loss] = tsne(s.M_acc,'Standardize',1,'NumDimensions',2);
         try
-            [s.M_acc_all_tsne_coeff, s.M_acc_all_tsne_loss] = tsne(s.M_acc_all,'Standardize',1,'NumDimensions',2);
+%             [s.M_acc_all_tsne_coeff, s.M_acc_all_tsne_loss] = tsne(s.M_acc_all,'Standardize',1,'NumDimensions',2);
         catch
         end
     end
+    disp('Complete.');
 end
 
 function [mappedX, mapping] = pca(X, no_dims)
