@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     # Get metadata
     patient = sys.argv[1]   # First input is the patient ID (also the name of the folder)
-    df0 = get_metadata("/eris/sbdp/Data/Baker/DIA/DIA.csv", patient)
+    df0 = get_metadata("/eris/sbdp/PHOENIX/GENERAL/DIA/DIA.csv", patient)
     
     # Extract individual data
     study = df0['Study'].values

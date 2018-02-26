@@ -1,11 +1,27 @@
-function [s] = analyzeGeneActiv(datafile, metadatafile, switch0)
+function [s] = analyzeGeneActiv(datafile, metadatafile, binsize, switch0)
+%
+% function [s] = analyzeGeneActiv(datafile, metadatafile, binsize, switch0)
+%
+% INPUTS:
+%   datafile:       path to raw data file
+%   metadatafile:   path to metadata file
+%   binsize:        bin size in seconds
+%   switch0:        if 1, will split up raw time series,do pwelch, and analyze
+%                   if 2, will perform STFT and analyze
+% 
+% 
+% Author:   Joshua Salvi
+% Year:     2018
     
     % Import data
     s = {};
+    disp('Importing...')
     s.rawdata = importdata(datafile);
     s.metadata = importdata(metadatafile);
+    disp('Completed import.')
 
     % Extract raw data information
+    disp('Extracting data...')
     s.datatimes = s.rawdata.textdata;
     s.acc_x = s.rawdata.data(:,1); s.acc_y = s.rawdata.data(:,2); s.acc_z = s.rawdata.data(:,3);
     s.lux = s.rawdata.data(:,4); s.button = s.rawdata.data(:,5); s.ambtemp = s.rawdata.data(:,6);
@@ -26,8 +42,9 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, switch0)
     
     % Switch between options for analysis
     if switch0 == 1
-        % Split into N-minute chunks
-        s.Nsec = 10;
+        % Split into chunks
+        disp('Splitting data...')
+        s.Nsec = binsize; % number of seconds as input
         chunk_size = s.scan_rate * s.Nsec;
         s.datatimes_split = reshape(s.datatimes(1:floor(length(s.datatimes)/chunk_size)*chunk_size),floor(length(s.datatimes)/chunk_size), chunk_size)';
         s.acc_x_split = reshape(s.acc_x(1:floor(length(s.datatimes)/chunk_size)*chunk_size),floor(length(s.acc_x)/chunk_size), chunk_size)';
@@ -47,6 +64,7 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, switch0)
         end
 
         % Process each chunk of data
+        disp('Processing chunks...')
         for j = 1:size(s.datatimes_split,2)
             disp(['iteration ' num2str(j) ' out of ' num2str(size(s.datatimes_split,2))])
             s.acc_x_split_mean(j) = mean(s.acc_x_split(:,j));
@@ -81,7 +99,7 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, switch0)
         end
     elseif switch0 == 2
         % Choose bin size in seconds and percent overlap
-        s.Nsec = 1;
+        s.Nsec = binsize;
         s.noverlap = 0;
         s.freqvec = 0:0.1:s.scan_rate/2;
         
@@ -89,6 +107,7 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, switch0)
         chunk_size = s.scan_rate * s.Nsec;
         
         % Calculate spectrograms
+        disp('Calculating spectrograms...')
         [s.acc_x_spec, s.freqs, s.times] = spectrogram(s.acc_x - mean(s.acc_x), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
         [s.acc_y_spec, s.freqs, s.times] = spectrogram(s.acc_y - mean(s.acc_y), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
         [s.acc_z_spec, s.freqs, s.times] = spectrogram(s.acc_z - mean(s.acc_z), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
@@ -103,6 +122,75 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, switch0)
             [s.acc_sum_spec, s.freqs, s.times] = spectrogram(s.acc_sum - mean(s.acc_sum), chunk_size, s.noverlap, s.freqvec, s.scan_rate);
         catch
         end
+        
+        % Combine into higher-dimensional dataset
+        disp('Combining spectrograms...')
+        s.M_acc = [abs(s.acc_x_spec); abs(s.acc_y_spec); abs(s.acc_z_spec)]';
+        try
+            s.M_acc_all = [s.M_acc'; abs(s.acc_x_SD_spec); abs(s.acc_y_SD_spec); abs(s.acc_z_SD_spec); abs(s.acc_sum_spec)]';
+        catch
+        end
+        
+        % Perform PCA
+        disp('PCA...')
+        [s.M_acc_pca_coeff, s.M_acc_pca_mapping] = pca(s.M_acc);
+        try
+            [s.M_acc_all_pca_coeff, s.M_acc_all_pca_mapping] = pca(s.M_acc_all);
+        catch
+        end
+
+        % Perform t-SNE
+        disp('tSNE...')
+        [s.M_acc_tsne_coeff, s.M_acc_tsne_loss] = tsne(s.M_acc,'Standardize',1,'NumDimensions',2);
+        try
+            [s.M_acc_all_tsne_coeff, s.M_acc_all_tsne_loss] = tsne(s.M_acc_all,'Standardize',1,'NumDimensions',2);
+        catch
+        end
     end
 end
 
+function [mappedX, mapping] = pca(X, no_dims)
+
+    if ~exist('no_dims', 'var')
+        no_dims = 2;
+    end
+	
+	% Make sure data is zero mean
+    mapping.mean = mean(X, 1);
+	X = bsxfun(@minus, X, mapping.mean);
+
+	% Compute covariance matrix
+    if size(X, 2) < size(X, 1)
+        C = cov(X);
+    else
+        C = (1 / size(X, 1)) * (X * X');        % if N>D, we better use this matrix for the eigendecomposition
+    end
+	
+	% Perform eigendecomposition of C
+	C(isnan(C)) = 0;
+	C(isinf(C)) = 0;
+    [M, lambda] = eig(C);
+    
+    % Sort eigenvectors in descending order
+    [lambda, ind] = sort(diag(lambda), 'descend');
+    if no_dims < 1
+        no_dims = find(cumsum(lambda ./ sum(lambda)) >= no_dims, 1, 'first');
+        disp(['Embedding into ' num2str(no_dims) ' dimensions.']);
+    end
+    if no_dims > size(M, 2)
+        no_dims = size(M, 2);
+        warning(['Target dimensionality reduced to ' num2str(no_dims) '.']);
+    end
+	M = M(:,ind(1:no_dims));
+    lambda = lambda(1:no_dims);
+	
+	% Apply mapping on the data
+    if ~(size(X, 2) < size(X, 1))
+        M = bsxfun(@times, X' * M, (1 ./ sqrt(size(X, 1) .* lambda))');     % normalize in order to get eigenvectors of covariance matrix
+    end
+    mappedX = X * M;
+    
+    % Store information for out-of-sample extension
+    mapping.M = M;
+	mapping.lambda = lambda;
+end

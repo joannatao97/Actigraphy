@@ -51,6 +51,12 @@ function [s] = extractRawActData(dir01, tz, patient)
         end
     end
 
+    try
+        s.acc_raw = acc;
+        s.temp_raw = temp;
+        s.eda_raw = eda;
+    end
+
     % Import processed survey data (from DIA_summ.sh)
     dir0RC = [dir01 'surveys/processed/'];
     files = dir(dir0RC); clear data

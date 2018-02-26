@@ -4,7 +4,7 @@ parentdir=$1
 scriptsdir="/eris/sbdp/GSP_Subject_Data/SCRIPTS/gits/custom_scripts/embrace_salvi"
 
 # Run DIA Summary file to process REDCap annotations
-${scriptsdir}/DIA_summ.sh
+${scriptsdir}/DIA_summ_phoenix.sh
 
 for subdir in ${parentdir}/*
     do
