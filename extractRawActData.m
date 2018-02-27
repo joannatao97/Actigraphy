@@ -416,7 +416,7 @@ function [s] = extractRawActData(dir01, tz, patient)
     % Create CSV files, with one CSV per hour
     % Header
     disp('Saving CSV files...')
-    header = {'activity level','mean(temp)','log mean(eda)','log var(acc dRMS)','acc PSD: 0-1 Hz','acc PSD 1-2 Hz','acc PSD 2-3 Hz','acc PSD 3-4 Hz','acc PSD 4-5 Hz','acc PSD 5-6 Hz','acc PSD 6-7 Hz','acc PSD 7-8 Hz','acc PSD 8-9 Hz','acc PSD 9-10 Hz','acc PSD 10-11 Hz','acc PSD 11-12 Hz','acc PSD 12-13 Hz','acc PSD 13-14 Hz','acc PSD 14-15 Hz'};
+    header = {'ACTIVITY','TEMP','EDA','ACCEL.','ACCEL. PSD 0-1 Hz','ACCEL. PSD 1-2 Hz','ACCEL. PSD 2-3 Hz','ACCEL. PSD 3-4 Hz','ACCEL. PSD 4-5 Hz','ACCEL. PSD 5-6 Hz','ACCEL. PSD 6-7 Hz','ACCEL. PSD 7-8 Hz','ACCEL. PSD 8-9 Hz','ACCEL. PSD 9-10 Hz','ACCEL. PSD 10-11 Hz','ACCEL. PSD 11-12 Hz','ACCEL. PSD 12-13 Hz','ACCEL. PSD 13-14 Hz','ACCEL. PSD 14-15 Hz'};
     try
         daymin = min(s.EDAtimes{2}); daymax = max(s.EDAtimes{2});
         for q = 1:length(s.EDAtimes{1})

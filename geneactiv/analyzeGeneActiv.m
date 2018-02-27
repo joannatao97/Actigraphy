@@ -22,7 +22,7 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, binsize, switch0)
 
     % Extract raw data information
     disp('Extracting data...')
-    s.datatimes = ellfun(@(x) x(1:end-4),s.rawdata.textdata,'UniformOutput',false);
+    s.datatimes = cellfun(@(x) x(1:end-4),s.rawdata.textdata,'UniformOutput',false);
     s.acc_x = s.rawdata.data(:,1); s.acc_y = s.rawdata.data(:,2); s.acc_z = s.rawdata.data(:,3);
     s.lux = s.rawdata.data(:,4); s.button = s.rawdata.data(:,5); s.ambtemp = s.rawdata.data(:,6);
     try
@@ -133,23 +133,33 @@ function [s] = analyzeGeneActiv(datafile, metadatafile, binsize, switch0)
         
         % Perform PCA
         disp('PCA...')
-        [s.M_acc_pca_coeff, s.M_acc_pca_mapping] = pca(s.M_acc);
+        
+        % Built-in PCA
+        [s.M_acc_pca_coeff, s.M_acc_pca_score, ~, s.M_acc_pca_tsquared, s.M_acc_pca_explainedvariance] = pca(s.M_acc');
+        
+        % Custome PCA
+%         [s.M_acc_pca_coeff, s.M_acc_pca_mapping] = pca(s.M_acc);
         try
             [s.M_acc_all_pca_coeff, s.M_acc_all_pca_mapping] = pca(s.M_acc_all);
         catch
         end
+%         try
+%             s.M_acc_pca_coeff = s.M_acc_pca_coeff(:,1:3);
+%             s.M_acc_all_pca_coeff = s.M_acc_all_pca_coeff(:,1:3);
+%         end
 
         % Perform t-SNE
         disp('tSNE...')
-%         [s.M_acc_tsne_coeff, s.M_acc_tsne_loss] = tsne(s.M_acc,'Standardize',1,'NumDimensions',2);
+        [s.M_acc_tsne_coeff, s.M_acc_tsne_loss] = tsne(s.M_acc,'Standardize',1,'NumDimensions',3);
         try
-%             [s.M_acc_all_tsne_coeff, s.M_acc_all_tsne_loss] = tsne(s.M_acc_all,'Standardize',1,'NumDimensions',2);
+            [s.M_acc_all_tsne_coeff, s.M_acc_all_tsne_loss] = tsne(s.M_acc_all,'Standardize',1,'NumDimensions',3);
         catch
         end
     end
     disp('Complete.');
 end
 
+%{
 function [mappedX, mapping] = pca(X, no_dims)
 
     if ~exist('no_dims', 'var')
@@ -195,3 +205,5 @@ function [mappedX, mapping] = pca(X, no_dims)
     mapping.M = M;
 	mapping.lambda = lambda;
 end
+
+%}
