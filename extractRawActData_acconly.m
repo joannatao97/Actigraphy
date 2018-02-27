@@ -111,7 +111,7 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
     % Save the structure to a MAT file
     disp('Saving MAT files...')
     try
-        save([dir01 'actigraphy/processed/' num2str(binSize) '/ExtractedData_acconly.mat'],'s','-v7.3');
+        save([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/ExtractedData_acconly.mat'],'s','-v7.3');
     catch
         disp('Unable to save data (Line 400)')
     end
@@ -146,7 +146,7 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
 
         % CSV files for spectral data
         csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_PSD_binSize' num2str(binSize) 's.csv'], s.acc_x_psd', header2);
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_PSD_binSize' num2str(binSize) 's.csv'], s.acc_y_psd', header2);
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_PSD_binSize' num2str(binSize) 's.csv'], s.acc_y_psd', header2);
         csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_PSD_binSize' num2str(binSize) 's.csv'], s.acc_z_psd', header2);
         csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_PSD_binSize' num2str(binSize) 's.csv'], s.acc_sum_psd', header2); 
     % catch
