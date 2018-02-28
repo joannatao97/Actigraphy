@@ -136,7 +136,22 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
 
 
     % Write to CSV files
-    % try
+    try
+        minPSD = min([min(min(s.acc_x_psd)) min(min(s.acc_y_psd)) min(min(s.acc_z_psd)) min(min(s.acc_sum_psd))]);
+        maxPSD = max([max(max(s.acc_x_psd)) max(max(s.acc_y_psd)) max(max(s.acc_z_psd)) max(max(s.acc_sum_psd))]);
+        s.acc_x_psd_scaled = (s.acc_x_psd - minPSD)./(maxPSD - minPSD);
+        s.acc_y_psd_scaled = (s.acc_y_psd - minPSD)./(maxPSD - minPSD);
+        s.acc_z_psd_scaled = (s.acc_z_psd - minPSD)./(maxPSD - minPSD);
+        s.acc_sum_psd_scaled = (s.acc_sum_psd - minPSD)./(maxPSD - minPSD);
+
+        minacc = min([min(s.acc_x_mean) min(s.acc_y_mean) min(s.acc_z_mean) min(s.acc_sum_mean)]);
+        maxacc = max([max(s.acc_x_mean) max(s.acc_y_mean) max(s.acc_z_mean) max(s.acc_sum_mean)]);
+        s.acc_x_mean_scaled = (s.acc_x_mean - minacc)./(maxacc - minacc);
+        s.acc_y_mean_scaled = (s.acc_y_mean - minacc)./(maxacc - minacc);
+        s.acc_z_mean_scaled = (s.acc_z_mean - minacc)./(maxacc - minacc);
+        s.acc_sum_mean_scaled = (s.acc_sum_mean - minacc)./(maxacc - minacc);
+    end
+    try
         mat1 = [s.acc_x_mean'; s.acc_y_mean'; s.acc_z_mean'; s.acc_sum_mean']';
         csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_mean_binSize' num2str(binSize) 's.csv'], s.acc_x_mean, {'ACC X'});
         csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_mean_binSize' num2str(binSize) 's.csv'], s.acc_y_mean, {'ACC Y'});
@@ -149,9 +164,22 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
         csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_PSD_binSize' num2str(binSize) 's.csv'], s.acc_y_psd', header2);
         csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_PSD_binSize' num2str(binSize) 's.csv'], s.acc_z_psd', header2);
         csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_PSD_binSize' num2str(binSize) 's.csv'], s.acc_sum_psd', header2); 
-    % catch
-    %     disp('Unable to save CSV files')
-    % end
+
+        mat1_scaled = [s.acc_x_mean_scaled'; s.acc_y_mean_scaled'; s.acc_z_mean_scaled'; s.acc_sum_mean_scaled']';
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_x_mean_scaled, {'ACC X'});
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_y_mean_scaled, {'ACC Y'});
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_z_mean_scaled, {'ACC Z'});
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_sum_mean_scaled, {'ACC SUM'});
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_ALL_mean_binSize' num2str(binSize) 's_scaled.csv'], mat1_scaled, header1);
+
+        % CSV files for spectral data
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_x_psd_scaled', header2);
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_y_psd_scaled', header2);
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_z_psd_scaled', header2);
+        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_sum_psd_scaled', header2);
+    catch
+        disp('Unable to save CSV files')
+    end
 end
 
 function csvwrite_with_headers(filename,m,headers,r,c)

@@ -4,14 +4,14 @@ studydir=$1
 
 # Run gplot on all CSV files in directory
 echo "Running gplot..."
-for file in ${studydir}/DIA*ALL.csv
+for file in ${studydir}/DIA*ALL*_scaled.csv
     do
         if [ -f "$file" ]; then
             gplot.sh "$file" 0 1
         fi
     done
 
-for file in ${studydir}/DIA*PSD.csv
+for file in ${studydir}/DIA*PSD*_scaled.csv
     do
         if [ -f "$file" ]; then
             gplot.sh "$file" 0 1
