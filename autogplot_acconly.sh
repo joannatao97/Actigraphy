@@ -1,22 +1,25 @@
 #!/bin/bash
 
 studydir=$1
+splitsize=$2
+
+scriptsdir="/eris/sbdp/GSP_Subject_Data/SCRIPTS/gits/custom_scripts/embrace_salvi"
 
 # Run gplot on all CSV files in directory
 echo "Running gplot..."
 for file in ${studydir}/DIA*ALL*_scaled.csv
     do
         if [ -f "$file" ]; then
-            gplot.sh "$file" 0 1
+            ${scriptsdir}/gplot_split.sh "$file" $splitsize 0 1
         fi
     done
 
-for file in ${studydir}/DIA*PSD*_scaled.csv
-    do
-        if [ -f "$file" ]; then
-            gplot.sh "$file" 0 1
-        fi
-    done
+# for file in ${studydir}/DIA*PSD*_scaled.csv
+#     do
+#         if [ -f "$file" ]; then
+#             gplot_split.sh "$file" $splitsize 0 1
+#         fi
+#     done
 
 # Combine PNGs from gplot.sh into single PDF with annotations
 echo "Converting to PDF..."

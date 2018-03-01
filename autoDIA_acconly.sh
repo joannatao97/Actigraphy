@@ -29,7 +29,7 @@ for subdir in ${parentdir}/*
         # Run gplot on all newly-generated CSVs, convert PNGs into a single PDF and PNG 
         echo "Auto gplot..."
         echo "${subdir}/actigraphy/processed/binned/binSize${binSize}"
-        ${scriptsdir}/autogplot_acconly.sh "${subdir}/actigraphy/processed/binned/binSize${binSize}"
+        ${scriptsdir}/autogplot_acconly.sh "${subdir}/actigraphy/processed/binned/binSize${binSize}" 60
 
         # Generate report
         echo "Generating report..."

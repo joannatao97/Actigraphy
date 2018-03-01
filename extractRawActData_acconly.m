@@ -67,6 +67,11 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
         [~, idx] = histc(elapsedtime,0:binSize:elapsedtime(end));
         idx(idx==0) = [];
         Fs = 1/elapsedtime(2);
+        if isnan(Fs) ~= 0
+            Fs = 30;        % Set default sample rate
+        elseif Fs == 0
+            Fs = 30;        % Set default sample rate
+        end
     catch
         disp('Unable to calculate bins for ACC')
     end
@@ -133,19 +138,17 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
         disp('Unable to generate headers')
     end
 
-
-
     % Write to CSV files
     try
-        minPSD = min([min(min(s.acc_x_psd)) min(min(s.acc_y_psd)) min(min(s.acc_z_psd)) min(min(s.acc_sum_psd))]);
-        maxPSD = max([max(max(s.acc_x_psd)) max(max(s.acc_y_psd)) max(max(s.acc_z_psd)) max(max(s.acc_sum_psd))]);
+        minPSD = nanmin([nanmin(nanmin(s.acc_x_psd)) nanmin(nanmin(s.acc_y_psd)) nanmin(nanmin(s.acc_z_psd)) nanmin(nanmin(s.acc_sum_psd))]);
+        maxPSD = nanmax([nanmax(nanmax(s.acc_x_psd)) nanmax(nanmax(s.acc_y_psd)) nanmax(nanmax(s.acc_z_psd)) nanmax(nanmax(s.acc_sum_psd))]);
         s.acc_x_psd_scaled = (s.acc_x_psd - minPSD)./(maxPSD - minPSD);
         s.acc_y_psd_scaled = (s.acc_y_psd - minPSD)./(maxPSD - minPSD);
         s.acc_z_psd_scaled = (s.acc_z_psd - minPSD)./(maxPSD - minPSD);
         s.acc_sum_psd_scaled = (s.acc_sum_psd - minPSD)./(maxPSD - minPSD);
 
-        minacc = min([min(s.acc_x_mean) min(s.acc_y_mean) min(s.acc_z_mean) min(s.acc_sum_mean)]);
-        maxacc = max([max(s.acc_x_mean) max(s.acc_y_mean) max(s.acc_z_mean) max(s.acc_sum_mean)]);
+        minacc = nanmin([nanmin(s.acc_x_mean) nanmin(s.acc_y_mean) nanmin(s.acc_z_mean) nanmin(s.acc_sum_mean)]);
+        maxacc = nanmax([nanmax(s.acc_x_mean) nanmax(s.acc_y_mean) nanmax(s.acc_z_mean) nanmax(s.acc_sum_mean)]);
         s.acc_x_mean_scaled = (s.acc_x_mean - minacc)./(maxacc - minacc);
         s.acc_y_mean_scaled = (s.acc_y_mean - minacc)./(maxacc - minacc);
         s.acc_z_mean_scaled = (s.acc_z_mean - minacc)./(maxacc - minacc);

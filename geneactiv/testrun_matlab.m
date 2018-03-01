@@ -7,38 +7,28 @@ binsize = 5;    % seconds
 
 %% Import annotations
 
+disp('Importing annotations...')
 annot = importdata('/Users/joshsalvi/Documents/GENEActiv/Data/JDS/processed/GA_JDS_annotations_20180220.csv'); 
 for j = 1:length(annot)
     annot{j} = strsplit(annot{j},',');
 end
 clear j
 
-%%
+
+disp('Generating time bins...')
+tic
 s.datatimes0 = cellfun(@(x) [str2double(x(1:4)), str2double(x(6:7)), str2double(x(9:10)), str2double(x(12:13)), str2double(x(15:16)), str2double(x(18:19))],s.datatimes,'UniformOutput',false);
 s.datatimes0 = cell2mat(s.datatimes0);
 s.datatimes0 = reshape(s.datatimes0,6,length(s.datatimes0)/6)';
 s.timeelapsed = etime(s.datatimes0,s.datatimes0(1,:));
 s.timebins = ceil((s.timeelapsed+1)./5);
-%{
-s.datatimes0.month = cellfun(@(x) str2double(x(6:7)),s.datatimes,'UniformOutput',false);
-s.datatimes0.day = cellfun(@(x) str2double(x(9:10)),s.datatimes,'UniformOutput',false);
-s.datatimes0.hour = cellfun(@(x) str2double(x(12:13)),s.datatimes,'UniformOutput',false);
-s.datatimes0.minute = cellfun(@(x) str2double(x(15:16)),s.datatimes,'UniformOutput',false);
-s.datatimes0.second = cellfun(@(x) str2double(x(18:19)),s.datatimes,'UniformOutput',false);
-s.datatimes_timevec = [s.datatimes0.year';s.datatimes0.month';s.datatimes0.day';s.datatimes0.hour';s.datatimes0.minute'];
-    
+toc
 
-s.datatimes0.year = cell2mat(s.datatimes0.year);
-s.datatimes0.month = cell2mat(s.datatimes0.month);
-s.datatimes0.day = cell2mat(s.datatimes0.day);
-s.datatimes0.hour = cell2mat(s.datatimes0.hour);
-s.datatimes0.minute = cell2mat(s.datatimes0.minute);
-%}
-%% Label activities
+disp('Labeling annotations...')
+tic
 s.activities = NaN(1,length(s.datatimes));
 s.activities_binned = NaN(1,length(s.times));
 s.activity_matrix = zeros(11,length(s.times));
-
 for j = 2:length(annot)
     try
         a = intersect(find(s.datatimes0(:,1)==year(annot{j}{2})),find(s.datatimes0(:,2)==month(annot{j}{2})-2));
@@ -61,11 +51,14 @@ for j = 2:length(annot)
     catch
     end
 end
+toc
 
-%%
+disp('Generating headers...')
+tic
 clear header
 header = {'still','computer','writing','walking','running','showering','brushingteeth','combinghair','lightsleep','deepsleep','eating'};
 for j = length(header)+1:length(header)+length(s.freqs)
     header{j} = ' ';
 end
+toc
         
