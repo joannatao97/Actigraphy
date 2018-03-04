@@ -14,18 +14,21 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
 %       (3) The program will create a subfolder with CSVs (one per hour)
 %       with the actigraphy and redcap data included for use in gplot.
 %       (4) binSize corresponds to the bin size in seconds used
-
 % ----------------------
 % Author: Joshua D. Salvi
 % josh.salvi@gmail.com
 % ----------------------
 %
-    
+
     % Append '/' to directory if not already present
     if dir01(end) ~= '/'
         dir01 = [dir01 '/'];
     end
     
+    % Open log file
+    diaryfile = [dir01 'MATLAB_logs.txt'];
+    diary(diaryfile)
+
     % Initialization
     clear RCvals acc temp eda data RCraw RCrawTS velRS RCstate RCdate RCu
     dir0Act = [dir01 'actigraphy/raw/'];
@@ -81,26 +84,26 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
     try
         acc2(:,1) = acc(1:length(idx),1); acc2(:,2) = acc(1:length(idx),2); acc2(:,3) = acc(1:length(idx),3); acc2(:,4) = acc(1:length(idx),4);
         acc = acc2;
-        displ = sqrt(acc(:,2).^2 + acc(:,3).^2 + acc(:,4).^2); displ = displ-mean(displ);
-        s.acc_x_var = accumarray(idx(:),acc(:,2),[],@var);
-        s.acc_y_var = accumarray(idx(:),acc(:,3),[],@var);
-        s.acc_z_var = accumarray(idx(:),acc(:,4),[],@var);
+        displ = sqrt(acc(:,2).^2 + acc(:,3).^2 + acc(:,4).^2); displ = displ-nanmean(displ);
         s.acc_x_mean = accumarray(idx(:),acc(:,2),[],@mean);
         s.acc_y_mean = accumarray(idx(:),acc(:,3),[],@mean);
         s.acc_z_mean = accumarray(idx(:),acc(:,4),[],@mean);
         s.acc_sum_mean = accumarray(idx(:),displ(1:length(idx)),[],@mean);
-        s.acc_sum_var = accumarray(idx(:),displ(1:length(idx)),[],@mean);
     catch
         disp('Unable to calculate mean and variance for ACC')
     end
 
     disp('ACC spectrograms...')
     try
-        freqs = 0:0.1:round(Fs/2);
-        [~, s.acc_x_freqs, s.acc_x_times, s.acc_x_psd] = spectrogram(acc(:,2)-mean(acc(:,2)), round(Fs)*binSize, 0, round(Fs));
-        [~, s.acc_y_freqs, s.acc_y_times, s.acc_y_psd] = spectrogram(acc(:,3)-mean(acc(:,3)), round(Fs)*binSize, 0, round(Fs));
-        [~, s.acc_z_freqs, s.acc_z_times, s.acc_z_psd] = spectrogram(acc(:,4)-mean(acc(:,4)), round(Fs)*binSize, 0, round(Fs));
-        [~, s.acc_sum_freqs, s.acc_sum_times, s.acc_sum_psd] = spectrogram(displ, round(Fs)*binSize, 0, round(Fs));
+        freqs = 0:0.05:round(Fs/2);s.sample_rate = Fs;
+        [~, s.acc_x_freqs, s.acc_x_times, s.acc_x_psd] = spectrogram(acc(:,2)-nanmean(acc(:,2)), round(Fs)*binSize, 0, freqs, round(Fs));
+        s.acc_x_var = sum(abs(s.acc_x_psd));
+        [~, s.acc_y_freqs, s.acc_y_times, s.acc_y_psd] = spectrogram(acc(:,3)-nanmean(acc(:,3)), round(Fs)*binSize, 0, freqs, round(Fs));
+        s.acc_y_var = sum(abs(s.acc_y_psd));
+        [~, s.acc_z_freqs, s.acc_z_times, s.acc_z_psd] = spectrogram(acc(:,4)-nanmean(acc(:,4)), round(Fs)*binSize, 0, freqs, round(Fs));
+        s.acc_z_var = sum(abs(s.acc_z_psd));
+        [~, s.acc_sum_freqs, s.acc_sum_times, s.acc_sum_psd] = spectrogram(displ, round(Fs)*binSize, 0, freqs, round(Fs));
+        s.acc_sum_var = sum(abs(s.acc_sum_psd));
         s.acc_x_psd = abs(s.acc_x_psd); s.acc_y_psd = abs(s.acc_y_psd); s.acc_x_psd = abs(s.acc_z_psd);
     catch
         disp('Unable to calculate spectrograms for ACC')
@@ -111,6 +114,72 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
         s.Patient = patient;
     catch
         disp('Error in providing patient data')
+    end
+
+    disp('Importing medications...')
+    try
+        studydir = '/eris/sbdp/PHOENIX/PROTECTED/DIA/';     % Study directory
+        dir0 = [studydir patient '/edw/raw/'];              % EDW data location
+        files = dir(dir0);                                  % Extract filenames
+    catch
+        disp('No EDW files.')
+    end
+
+    % Get the actigraphy start time so that everything syncs up
+    try
+        unix_epoch = datenum(1970,1,1,0,0,0);
+        start_time = s.acc_raw(1,1)./86400/1e3 + unix_epoch;
+    end
+    try
+        for p = 1:length(files)
+            if isempty(strfind(files(p).name,'.csv')) == 0
+                disp(files(p).name);
+                raw_meds_data = importdata([dir0 files(p).name]);
+                for j = 2:length(raw_meds_data)
+                    % meds_data = strsplit(raw_meds_data{j},',');
+                    meds_data = regexp(raw_meds_data{j}, ',', 'split');
+                    s.medications(j-1).timeET = datenum(meds_data{2}, 'yyyy-mm-dd HH:MM:SS');
+                    s.medications(j-1).timeUTC = TimezoneConvert(datenum(s.medications(j-1).timeET),'America/New_York','UTC');
+                    s.medications(j-1).elapsedTimeSeconds = etime(datevec(s.medications(j-1).timeUTC),datevec(start_time));
+                    % medname0 = strsplit(meds_data{3},' ');
+                    medname0 = regexp(meds_data{3}, ' ', 'split');
+                    s.medications(j-1).name = '';
+                    for k = 1:length(medname0)-3
+                        s.medications(j-1).name = [s.medications(j-1).name ' ' medname0{k}];
+                    end
+                    s.medications(j-1).dose = [meds_data{4} ' ' meds_data{5}];
+                    s.medications(j-1).route = meds_data{6};
+                    if isempty(strfind(meds_data{7},'PRN')) == 0
+                        s.medications(j-1).frequency = 'PRN';
+                    else
+                        s.medications(j-1).frequency = 'SCH';
+                    end
+                    s.medications(j-1).all = [s.medications(j-1).name(2:end) ' ' s.medications(j-1).dose ' ' s.medications(j-1).route ' ' s.medications(j-1).frequency];
+                    mednames{j-1} = s.medications(j-1).all;
+                end
+            end
+        end
+    catch
+        disp('Unable to import EDW data.')
+    end
+
+    % Generate binarized data matrix, aligned to actigraphy
+    try
+        headerMeds = unique(mednames); clear mednames
+        s.medsArray = zeros(length(headerMeds),length(s.acc_x_mean));
+        for j = 1:length(s.medications)
+            if s.medications(j).elapsedTimeSeconds <= s.acc_x_times(end)
+                m = findnearest(s.acc_x_times, s.medications(j).elapsedTimeSeconds);
+                n = find(cell2mat(cellfun(@(x) isempty(strfind(x,s.medications(j).all))==0,headerMeds,'UniformOutput',0))==1);
+                s.medsArray(n,m) = 1;
+            end
+        end
+
+        disp('Writing EDW data to CSV...')
+        dirMedsOut = [studydir patient '/edw/processed/'];
+        csvwrite_with_headers([dirMedsOut '/DIA_' s.Patient '_edw' '_medications_binary_binSize' num2str(binSize) 's.csv'], s.medsArray', headerMeds);
+    catch
+        disp('Unable to generate EDW matrix')
     end
 
     % Save the structure to a MAT file
@@ -183,6 +252,10 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
     catch
         disp('Unable to save CSV files')
     end
+
+    % Turn off logging
+    diary off
+
 end
 
 function csvwrite_with_headers(filename,m,headers,r,c)
@@ -215,4 +288,67 @@ function csvwrite_with_headers(filename,m,headers,r,c)
     fprintf(fid,'%s\r\n',header_string);
     fclose(fid);
     dlmwrite(filename, m,'-append','delimiter',',','roffset', r,'coffset',c);
+end
+
+
+function [c, matches] = strsplit(str, aDelim, varargin)
+
+    % Initialize default values.
+    collapseDelimiters = true;
+    delimiterType = 'Simple';
+    if nargin < 2
+        delimiterType = 'RegularExpression';
+        aDelim = {'\s'};
+    elseif ischar(aDelim)
+        aDelim = {aDelim};
+    elseif isstring(aDelim)
+        aDelim(ismissing(aDelim)) = [];
+        aDelim = cellstr(aDelim);
+    elseif ~iscellstr(aDelim)
+        error(message('MATLAB:strsplit:InvalidDelimiterType'));
+    end
+    if nargin > 2
+        funcName = mfilename;
+        p = inputParser;
+        p.FunctionName = funcName;
+        p.addParameter('CollapseDelimiters', collapseDelimiters);
+        p.addParameter('DelimiterType', delimiterType);
+        p.parse(varargin{:});
+        collapseDelimiters = verifyScalarLogical(p.Results.CollapseDelimiters, ...
+            funcName, 'CollapseDelimiters');
+        delimiterType = validatestring(p.Results.DelimiterType, ...
+            {'RegularExpression', 'Simple'}, funcName, 'DelimiterType');
+    end
+
+    % Handle DelimiterType.
+    if strcmp(delimiterType, 'Simple')
+        % Handle escape sequences and translate.
+        aDelim = strescape(aDelim);
+        aDelim = regexptranslate('escape', aDelim);
+    else
+        % Check delimiter for regexp warnings.
+        regexp('', aDelim, 'warnings');
+    end
+
+    % Handle multiple delimiters.
+    aDelim = strjoin(aDelim, '|');
+
+    % Handle CollapseDelimiters.
+    if collapseDelimiters
+        aDelim = ['(?:', aDelim, ')+'];
+    end
+
+    % Split.
+    [c, matches] = regexp(str, aDelim, 'split', 'match');
+
+end
+
+function tf = verifyScalarLogical(tf, funcName, parameterName)
+
+    if isscalar(tf) && (islogical(tf) || (isnumeric(tf) && any(tf == [0, 1])))
+        tf = logical(tf);
+    else
+        validateattributes(tf, {'logical'}, {'scalar'}, funcName, parameterName);
+    end
+
 end

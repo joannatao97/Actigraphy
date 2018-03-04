@@ -1,10 +1,11 @@
+clear
+
 metafile = '/Users/joshsalvi/Documents/GENEActiv/Data/JDS/processed/JDS_038816_2018-02-26_09-41-50.csv_metadata.csv';
 rawfile = '/Users/joshsalvi/Documents/GENEActiv/Data/JDS/processed/JDS_038816_2018-02-26_09-41-50.csv_rawdata.csv';
 
 binsize = 5;    % seconds
+
 [s]=analyzeGeneActiv(rawfile,metafile,binsize,2);
-
-
 %% Import annotations
 
 disp('Importing annotations...')
@@ -19,7 +20,7 @@ disp('Generating time bins...')
 tic
 s.datatimes0 = cellfun(@(x) [str2double(x(1:4)), str2double(x(6:7)), str2double(x(9:10)), str2double(x(12:13)), str2double(x(15:16)), str2double(x(18:19))],s.datatimes,'UniformOutput',false);
 s.datatimes0 = cell2mat(s.datatimes0);
-s.datatimes0 = reshape(s.datatimes0,6,length(s.datatimes0)/6)';
+% s.datatimes0 = reshape(s.datatimes0,6,length(s.datatimes0)/6)';
 s.timeelapsed = etime(s.datatimes0,s.datatimes0(1,:));
 s.timebins = ceil((s.timeelapsed+1)./5);
 toc
@@ -61,4 +62,29 @@ for j = length(header)+1:length(header)+length(s.freqs)
     header{j} = ' ';
 end
 toc
+
+%%
+close all;
+q=1;
+pcacoeff1 = [];
+pcacoeff2 = [];
+pcacoeff3 = [];
+act = [];
+for ind0 = [4 7 10]
+%     h0 = figure('units','normalized','outerposition',[0 0 2.2 1.6]);
+    inds = find(s.activities_binned==ind0);
+    breaks = find(diff(inds)>1); L = length(breaks) + 1;
+    breaks = [1 breaks length(inds)];
+    for k = 1:L
+        try
+        inds0 = inds(breaks(k):breaks(k+1));
+        inds0 = inds0(round(0.25*length(inds0)):round(0.75*length(inds0)));
         
+        pcacoeff1 = [pcacoeff1 s.M_acc_pca_coeff(inds0,1)'];
+        pcacoeff2 = [pcacoeff2 s.M_acc_pca_coeff(inds0,2)'];
+        pcacoeff3 = [pcacoeff3 s.M_acc_pca_coeff(inds0,3)'];
+        act = [act s.activities_binned(inds0)];
+        q=q+1;
+        end
+    end
+end
