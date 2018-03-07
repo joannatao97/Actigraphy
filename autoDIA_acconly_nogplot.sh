@@ -24,6 +24,9 @@ for subdir in ${parentdir}/*
 
         # Run matlab analysis to generate MAT file and CSVs
         echo "MATLAB analysis..."
-        /usr/local/bin/matlab -nosplash -nodisplay -nodesktop -nojvm -r "addpath('${scriptsdir}'); extractRawActData_acconly('${subdir}',$binSize,'$(basename $subdir)');quit()"
+        /usr/local/bin/matlab -nosplash -nodisplay -nodesktop -r "addpath('${scriptsdir}'); extractRawActData_acconly('${subdir}',$binSize,'$(basename $subdir)');quit()"
         
+        # Change permissions to r/w/e for user and group
+        chmod -R 775 ${subdir}
+
     done

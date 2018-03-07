@@ -136,12 +136,10 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
                 disp(files(p).name);
                 raw_meds_data = importdata([dir0 files(p).name]);
                 for j = 2:length(raw_meds_data)
-                    % meds_data = strsplit(raw_meds_data{j},',');
                     meds_data = regexp(raw_meds_data{j}, ',', 'split');
                     s.medications(j-1).timeET = datenum(meds_data{2}, 'yyyy-mm-dd HH:MM:SS');
-                    s.medications(j-1).timeUTC = TimezoneConvert(datenum(s.medications(j-1).timeET),'America/New_York','UTC');
-                    s.medications(j-1).elapsedTimeSeconds = etime(datevec(s.medications(j-1).timeUTC),datevec(start_time));
-                    % medname0 = strsplit(meds_data{3},' ');
+                    s.medications(j-1).timeUTC = TimezoneConvert(datenum(s.medications(j-1).timeET), 'America/New_York','UTC');
+                    s.medications(j-1).elapsedTimeSeconds = etime(datevec(s.medications(j-1).timeUTC), datevec(start_time));
                     medname0 = regexp(meds_data{3}, ' ', 'split');
                     s.medications(j-1).name = '';
                     for k = 1:length(medname0)-3
@@ -171,7 +169,11 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
             if s.medications(j).elapsedTimeSeconds <= s.acc_x_times(end)
                 m = findnearest(s.acc_x_times, s.medications(j).elapsedTimeSeconds);
                 n = find(cell2mat(cellfun(@(x) isempty(strfind(x,s.medications(j).all))==0,headerMeds,'UniformOutput',0))==1);
-                s.medsArray(n,m) = 1;
+                if m > 1
+                    if m < length(s.acc_x_mean)
+                        s.medsArray(n,m) = 1;
+                    end
+                end
             end
         end
 
@@ -258,6 +260,10 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
 
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%% EXTRA FUNCTIONS %%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 function csvwrite_with_headers(filename,m,headers,r,c)
     if ~ischar(filename)
         error('FILENAME must be a string');
@@ -290,59 +296,6 @@ function csvwrite_with_headers(filename,m,headers,r,c)
     dlmwrite(filename, m,'-append','delimiter',',','roffset', r,'coffset',c);
 end
 
-
-function [c, matches] = strsplit(str, aDelim, varargin)
-
-    % Initialize default values.
-    collapseDelimiters = true;
-    delimiterType = 'Simple';
-    if nargin < 2
-        delimiterType = 'RegularExpression';
-        aDelim = {'\s'};
-    elseif ischar(aDelim)
-        aDelim = {aDelim};
-    elseif isstring(aDelim)
-        aDelim(ismissing(aDelim)) = [];
-        aDelim = cellstr(aDelim);
-    elseif ~iscellstr(aDelim)
-        error(message('MATLAB:strsplit:InvalidDelimiterType'));
-    end
-    if nargin > 2
-        funcName = mfilename;
-        p = inputParser;
-        p.FunctionName = funcName;
-        p.addParameter('CollapseDelimiters', collapseDelimiters);
-        p.addParameter('DelimiterType', delimiterType);
-        p.parse(varargin{:});
-        collapseDelimiters = verifyScalarLogical(p.Results.CollapseDelimiters, ...
-            funcName, 'CollapseDelimiters');
-        delimiterType = validatestring(p.Results.DelimiterType, ...
-            {'RegularExpression', 'Simple'}, funcName, 'DelimiterType');
-    end
-
-    % Handle DelimiterType.
-    if strcmp(delimiterType, 'Simple')
-        % Handle escape sequences and translate.
-        aDelim = strescape(aDelim);
-        aDelim = regexptranslate('escape', aDelim);
-    else
-        % Check delimiter for regexp warnings.
-        regexp('', aDelim, 'warnings');
-    end
-
-    % Handle multiple delimiters.
-    aDelim = strjoin(aDelim, '|');
-
-    % Handle CollapseDelimiters.
-    if collapseDelimiters
-        aDelim = ['(?:', aDelim, ')+'];
-    end
-
-    % Split.
-    [c, matches] = regexp(str, aDelim, 'split', 'match');
-
-end
-
 function tf = verifyScalarLogical(tf, funcName, parameterName)
 
     if isscalar(tf) && (islogical(tf) || (isnumeric(tf) && any(tf == [0, 1])))
@@ -351,4 +304,212 @@ function tf = verifyScalarLogical(tf, funcName, parameterName)
         validateattributes(tf, {'logical'}, {'scalar'}, funcName, parameterName);
     end
 
+end
+
+function [ targetDST ] = TimezoneConvert( dn, fromTimezone, toTimezone )
+    import java.lang.String
+    import java.util.* java.awt.*
+    import java.util.Enumeration
+
+    t1 = GregorianCalendar(TimeZone.getTimeZone(fromTimezone));
+    % t1.set(year(dn), month(dn)-1, day(dn), hour(dn), minute(dn), second(dn))
+    t1.set(year(dn), month(dn)-1, day(dn), hour(dn), minute(dn))
+
+    t2 = GregorianCalendar(TimeZone.getTimeZone(toTimezone));
+    t2.setTimeInMillis(t1.getTimeInMillis());
+    targetDST = rawjavacalendar2datenum(t2);
+end
+
+function y = year(d,f) 
+    if nargin < 1 
+      error(message('finance:year:missingInputs')) 
+    end 
+    if nargin < 2
+      f = '';
+    end
+    tFlag = false;   %Keep track if input was character array 
+    if ischar(d) 
+      d = datenum(d,f); 
+      tFlag = true;
+    end 
+    % Generate date vectors
+    if nargin < 2 || tFlag
+      c = datevec(d(:));
+    else
+      c = datevec(d(:),f);
+    end
+    y = c(:,1);             % Extract years  
+    if ~ischar(d) 
+      y = reshape(y,size(d)); 
+    end 
+end
+
+function [n, m] = month(d,f)
+    if nargin < 1
+        error(message('finance:month:missingInput'))
+    end
+    if nargin < 2
+      f = '';
+    end
+    tFlag = false;   %Keep track if input was character array 
+    if ischar(d)
+        d = datenum(d,f);
+        tFlag = true;
+    end
+    % Generate date vectors
+    if nargin < 2  || tFlag
+      c = datevec(d(:));
+    else
+      c = datevec(d(:),f);
+    end
+    % Monthly strings
+    mths = ['NaN';'Jan';'Feb';'Mar';'Apr';'May';'Jun';'Jul'; ...
+        'Aug';'Sep';'Oct';'Nov';'Dec'];
+
+    % Extract numeric months
+    n = c(:, 2);
+
+    % Keep track of nan values.
+    nanLoc = isnan(n);
+
+    % Extract monthly strings. (c(:, 2) == 0) handles the case when d = 0.
+    mthIdx = c(:, 2) + (c(:, 2) == 0);
+    mthIdx(nanLoc) = 0;
+    m = mths(mthIdx + 1, :);
+
+    % Preserve the dims of the inputs for n. m is a char array so it should be
+    % column oriented.
+    if ~ischar(d)
+        n = reshape(n, size(d));
+    end
+end
+
+function dom = day(d,f) 
+    if nargin < 1 
+      error(message('finance:day:missingInputs')) 
+    end 
+    if nargin < 2
+      f = '';
+    end
+    tFlag = false;   %Keep track if input was character array 
+    if ischar(d)
+        d = datenum(d,f);
+        tFlag = true;
+    end
+    % Generate date vectors
+    if nargin < 2  || tFlag
+      c = datevec(d(:));
+    else
+      c = datevec(d(:),f);
+    end
+    dom = c(:,3);            % Extract day of month 
+    if ~ischar(d) 
+      dom = reshape(dom,size(d)); 
+    end
+end
+
+function h = hour(d,f) 
+    if nargin < 1 
+      error(message('finance:hour:missingInputs')) 
+    end 
+    if nargin < 2
+      f = '';
+    end
+    tFlag = false;   %Keep track if input was character array 
+    if ischar(d)
+        d = datenum(d,f);
+        tFlag = true;
+    end
+    % Generate date vectors
+    if nargin < 2  || tFlag
+      c = datevec(d(:));
+    else
+      c = datevec(d(:),f);
+    end
+    h = c(:,4);     % Extract hour 
+    if ~ischar(d) 
+      h = reshape(h,size(d)); 
+    end
+end
+
+function m = minute(d,f)
+    if nargin < 1
+       error(message('finance:minute:missingInputs'))
+    end
+    if nargin < 2
+      f = '';
+    end
+    if ischar(d) 
+       d = datenum(d,f);
+       sizeD = size(d); 
+    elseif iscell(d)
+       sizeD = size(d);   
+       d = datenum(d(:),f);
+    elseif isnumeric(d)
+       sizeD = size(d); 
+    else
+       error(message('finance:minute:invalidInputClass'))
+    end
+    % Generate date vectors from dates
+    c = datevecmx(d(:), 1);
+    % Extract minute
+    m = c(:, 5);
+    % Reshape into the correct dims
+    m = reshape(m, sizeD);
+end
+
+function s = second(d,f)
+    if nargin < 1
+       error(message('finance:second:missingInputs'))
+    end
+    if nargin < 2
+      f = '';
+    end
+    if ischar(d)
+       d = datenum(d,f);
+       sizeD = size(d);
+    elseif iscell(d)
+       sizeD = size(d);
+       d = datenum(d(:),f);
+    elseif isnumeric(d)
+       sizeD = size(d);
+    else
+       error(message('finance:second:invalidInputClass'))
+    end
+end
+
+function [ matlabdatenum ] = rawjavacalendar2datenum( cal )
+    javaSerialDate = cal.getTimeInMillis() + cal.get(cal.ZONE_OFFSET) + cal.get(cal.DST_OFFSET);
+    matlabdatenum = datenum([1970 1 1 0 0 javaSerialDate / 1000]);
+end
+
+function [r,c,V] = findnearest(srchvalue,srcharray,bias)
+    if nargin<2
+        error('Need two inputs: Search value and search array')
+    elseif nargin<3
+        bias = 0;
+    end
+    srcharray = srcharray-srchvalue;
+    if bias == -1      
+        srcharray(srcharray>0) =inf;        
+    elseif bias == 1    
+        srcharray(srcharray<0) =inf;        
+    end
+
+    if nargout==1 || nargout==0   
+        if all(isinf(srcharray(:)))
+            r = [];
+        else
+            r = find(abs(srcharray)==min(abs(srcharray(:))));
+        end        
+    elseif nargout>1
+        if all(isinf(srcharray(:)))
+            r = [];c=[];
+        else
+            [r,c] = find(abs(srcharray)==min(abs(srcharray(:))));
+        end   
+        if nargout==3
+            V = srcharray(r,c)+srchvalue;
+        end
+    end
 end
