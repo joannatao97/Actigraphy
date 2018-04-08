@@ -17,6 +17,7 @@ for splitfile in ${mainfile}_split_*
         head -n 1 $mainfile > tmp_file
         cat $splitfile >> tmp_file
         mv -f tmp_file ${splitfile}.csv
+        rm tmp_file
     done
 
 for file in ${mainfile}_split_*.csv

@@ -20,8 +20,8 @@ for subdir in ${parentdir}/*
         echo "Removing ${subdir}/actigraphy/processed/binned/binSize${binSize}"
         rm ${subdir}/MATLAB_logs.txt
         mkdir ${subdir}/actigraphy/processed/binned
-        rm -R ${subdir}/actigraphy/processed/binned/binSize${binSize}
-        mkdir ${subdir}/actigraphy/processed/binned/binSize${binSize}
+        # rm -R ${subdir}/actigraphy/processed/binned/binSize${binSize}
+        # mkdir ${subdir}/actigraphy/processed/binned/binSize${binSize}
 
         # Run matlab analysis to generate MAT file and CSVs
         echo "MATLAB analysis..."

@@ -64,27 +64,82 @@ end
 toc
 
 %%
+accx = log(abs(s.acc_x_spec));
+accy = log(abs(s.acc_y_spec));
+accz = log(abs(s.acc_z_spec));
+
+% minallx = min(min(accx)); minally = min(min(accy)); minallz = min(min(accz));
+% maxallx = max(max(accx)); maxally = max(max(accy)); maxallz = max(max(accz));
+minallx = min([min(min(accx)) min(min(accy)) min(min(accz))]);minally=minallx;minallz=minallx;
+maxallx = max([max(max(accx)) max(max(accy)) max(max(accz))]);maxally=maxallx;maxallz=maxallx;
+rangex = maxallx-minallx; rangey = maxally-minally; rangez = maxallz-minallz;
+
+acc_x_spec_scaled = (accx-minallx)./rangex; 
+acc_x_spec_scaled = acc_x_spec_scaled.*255;
+
+acc_y_spec_scaled = (accy-minally)./rangey; 
+acc_y_spec_scaled = acc_y_spec_scaled.*255;
+
+acc_z_spec_scaled = (accz-minallz)./rangez; 
+acc_z_spec_scaled = acc_z_spec_scaled.*255;
+
+% acc_x_spec_scaled = uint8(accx);
+% acc_y_spec_scaled = uint8(accy);
+% acc_z_spec_scaled = uint8(accz);
+
+acc_all_spec_scaled(:,:,1) = 1.*acc_x_spec_scaled;
+acc_all_spec_scaled(:,:,2) = 1.*acc_y_spec_scaled;
+acc_all_spec_scaled(:,:,3) = 1.*acc_z_spec_scaled;
+
+
+GAIN = 0.15;
+
+acc_all_spec_scaled = GAIN.*acc_all_spec_scaled;
+
+%%
 close all;
 q=1;
-pcacoeff1 = [];
-pcacoeff2 = [];
-pcacoeff3 = [];
-act = [];
-for ind0 = [4 7 10]
-%     h0 = figure('units','normalized','outerposition',[0 0 2.2 1.6]);
+
+for ind0 = 1:11
     inds = find(s.activities_binned==ind0);
     breaks = find(diff(inds)>1); L = length(breaks) + 1;
     breaks = [1 breaks length(inds)];
     for k = 1:L
         try
-        inds0 = inds(breaks(k):breaks(k+1));
-        inds0 = inds0(round(0.25*length(inds0)):round(0.75*length(inds0)));
-        
-        pcacoeff1 = [pcacoeff1 s.M_acc_pca_coeff(inds0,1)'];
-        pcacoeff2 = [pcacoeff2 s.M_acc_pca_coeff(inds0,2)'];
-        pcacoeff3 = [pcacoeff3 s.M_acc_pca_coeff(inds0,3)'];
-        act = [act s.activities_binned(inds0)];
-        q=q+1;
+            close all
+            h0=figure('units','normalized','outerposition',[0 0 2.2 1.6]);
+            inds0 = inds(breaks(k):breaks(k+1));
+            
+            subplot(3,1,1);
+            imagesc(s.times(1:length(inds0)), s.freqs, accx(:,inds0));
+            ylabel('Frequency (Hz)'); xlabel('Time (s)');
+            h = colorbar;
+            ylabel(h, 'X');
+            caxis([-6 6]);
+            title([header{ind0} ' ' num2str(k)]);
+            
+            subplot(3,1,2);
+            imagesc(s.times(1:length(inds0)), s.freqs, accy(:,inds0));
+            ylabel('Frequency (Hz)'); xlabel('Time (s)');
+            h = colorbar;
+            ylabel(h, 'Y');
+            caxis([-6 6]);
+            
+            subplot(3,1,3);
+            imagesc(s.times(1:length(inds0)), s.freqs, accz(:,inds0));
+            ylabel('Frequency (Hz)'); xlabel('Time (s)');
+            h = colorbar;
+            ylabel(h, 'Z');
+            caxis([-6 6]);
+            
+            outpath = '/Users/joshsalvi/Downloads/actclasses';
+            print(h0, [outpath 'GA_JDS_activity' num2str(ind0) '_epoch' num2str(k) '.png'], '-dpng')
+            
+%             h0=image(s.times(1:length(inds0))./60,s.freqs,acc_all_spec_scaled(:,inds0,1:3), 'CDataMapping', 'direct');
+%             ylabel('frequency (Hz)');xlabel('time (minutes)')
+%             title(['Activity: ' header{ind0} '; Gain: ' num2str(GAIN)])
+%             savepath0 = '/Users/joshsalvi/Downloads/actclasses/rescaled/';
+%             print([savepath0 'GA_JDS_' header{ind0} '_gain' num2str(GAIN) '_' num2str(k) '.pdf'],'-dpdf','-bestfit')
         end
     end
 end

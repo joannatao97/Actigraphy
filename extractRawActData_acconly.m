@@ -28,6 +28,8 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
     % Open log file
     diaryfile = [dir01 'MATLAB_logs.txt'];
     diary(diaryfile)
+    disp('------------------START------------------')
+    disp(['DATE: ' date])
 
     % Initialization
     clear RCvals acc temp eda data RCraw RCrawTS velRS RCstate RCdate RCu
@@ -89,22 +91,68 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
         s.acc_y_mean = accumarray(idx(:),acc(:,3),[],@mean);
         s.acc_z_mean = accumarray(idx(:),acc(:,4),[],@mean);
         s.acc_sum_mean = accumarray(idx(:),displ(1:length(idx)),[],@mean);
+        s.acc_x_var = accumarray(idx(:),acc(:,2),[],@var);
+        s.acc_y_var = accumarray(idx(:),acc(:,3),[],@var);
+        s.acc_z_var = accumarray(idx(:),acc(:,4),[],@var);
+        s.acc_sum_var = accumarray(idx(:),displ(1:length(idx)),[],@var);
     catch
         disp('Unable to calculate mean and variance for ACC')
     end
 
     disp('ACC spectrograms...')
     try
-        freqs = 0:0.05:round(Fs/2);s.sample_rate = Fs;
-        [~, s.acc_x_freqs, s.acc_x_times, s.acc_x_psd] = spectrogram(acc(:,2)-nanmean(acc(:,2)), round(Fs)*binSize, 0, freqs, round(Fs));
-        s.acc_x_var = sum(abs(s.acc_x_psd));
-        [~, s.acc_y_freqs, s.acc_y_times, s.acc_y_psd] = spectrogram(acc(:,3)-nanmean(acc(:,3)), round(Fs)*binSize, 0, freqs, round(Fs));
-        s.acc_y_var = sum(abs(s.acc_y_psd));
-        [~, s.acc_z_freqs, s.acc_z_times, s.acc_z_psd] = spectrogram(acc(:,4)-nanmean(acc(:,4)), round(Fs)*binSize, 0, freqs, round(Fs));
-        s.acc_z_var = sum(abs(s.acc_z_psd));
-        [~, s.acc_sum_freqs, s.acc_sum_times, s.acc_sum_psd] = spectrogram(displ, round(Fs)*binSize, 0, freqs, round(Fs));
-        s.acc_sum_var = sum(abs(s.acc_sum_psd));
+        freqs = 0:0.05:round(Fs/2); s.sample_rate = Fs;
+
+        s.acc_x_psd = zeros(length(freqs), idx(end));
+        s.acc_y_psd = zeros(length(freqs), idx(end));
+        s.acc_z_psd = zeros(length(freqs), idx(end));
+        s.acc_sum_psd = zeros(length(freqs), idx(end));
+        try
+            breaks = find(diff(idx) > 1);
+            breaks = [1 breaks length(idx)];
+
+            s.acc_x_psd = zeros(length(freqs), idx(end));
+            s.acc_y_psd = zeros(length(freqs), idx(end));
+            s.acc_z_psd = zeros(length(freqs), idx(end));
+            s.acc_sum_psd = zeros(length(freqs), idx(end));
+
+            for j = 2:length(breaks)
+                try
+                    accx = acc((breaks(j-1)):(breaks(j)),2);
+                    accy = acc((breaks(j-1)):(breaks(j)),3);
+                    accz = acc((breaks(j-1)):(breaks(j)),4);
+                    accsum = displ((breaks(j-1)):(breaks(j)));
+                    
+                    [~, s.acc_x_freqs, ~, xpsd] = spectrogram(accx-nanmean(accx), round(Fs)*binSize, 0, freqs, round(Fs));
+                    [~, s.acc_y_freqs, ~, ypsd] = spectrogram(accy-nanmean(accy), round(Fs)*binSize, 0, freqs, round(Fs));
+                    [~, s.acc_z_freqs, ~, zpsd] = spectrogram(accz-nanmean(accz), round(Fs)*binSize, 0, freqs, round(Fs));
+                    [~, s.acc_sum_freqs, ~, sumpsd] = spectrogram(accsum-nanmean(accsum), round(Fs)*binSize, 0, freqs, round(Fs));
+
+                    s.acc_x_psd(:,idx(breaks(j-1)+1)+1:idx(breaks(j-1)+1)+size(xpsd,2)) = xpsd;
+                    s.acc_y_psd(:,idx(breaks(j-1)+1)+1:idx(breaks(j-1)+1)+size(ypsd,2)) = ypsd;
+                    s.acc_z_psd(:,idx(breaks(j-1)+1)+1:idx(breaks(j-1)+1)+size(zpsd,2)) = zpsd;
+                    s.acc_sum_psd(:,idx(breaks(j-1)+1)+1:idx(breaks(j-1)+1)+size(sumpsd,2)) = sumpsd;
+                catch
+                    disp('Cannot complete PSD loop with breaks.')
+                end
+            end
+        catch
+            for j = 1:idx(end)
+                try
+                    s.acc_x_psd(:,j) = pwelch(acc(idx==j,2) - nanmean(acc(idx==j,2)), length(acc(idx==j,2)), 0, freqs, Fs);
+                    s.acc_y_psd(:,j) = pwelch(acc(idx==j,3) - nanmean(acc(idx==j,3)), length(acc(idx==j,2)), 0, freqs, Fs);
+                    s.acc_z_psd(:,j) = pwelch(acc(idx==j,4) - nanmean(acc(idx==j,4)), length(acc(idx==j,2)), 0, freqs, Fs);
+                    s.acc_sum_psd(:,j) = pwelch(displ(idx==j) - nanmean(displ(idx==j)), length(displ(idx==j)), 0, freqs, Fs);
+                catch
+                    disp('Unable to calculate individual PSDs.')
+                end
+                if mod(j,50) == 0
+                    disp(['iteration ' num2str(j) ' out of ' num2str(idx(end))])
+                end
+            end
+        end
         s.acc_x_psd = abs(s.acc_x_psd); s.acc_y_psd = abs(s.acc_y_psd); s.acc_x_psd = abs(s.acc_z_psd);
+        s.acc_x_freqs = freqs; s.acc_y_freqs = freqs; s.acc_z_freqs = freqs; s.acc_sum_freqs = freqs;
     catch
         disp('Unable to calculate spectrograms for ACC')
     end
@@ -224,38 +272,67 @@ function [s] = extractRawActData_acconly(dir01, binSize, patient)
         s.acc_y_mean_scaled = (s.acc_y_mean - minacc)./(maxacc - minacc);
         s.acc_z_mean_scaled = (s.acc_z_mean - minacc)./(maxacc - minacc);
         s.acc_sum_mean_scaled = (s.acc_sum_mean - minacc)./(maxacc - minacc);
+
+        xcol = s.acc_x_mean_scaled.*255;
+        ycol = s.acc_x_mean_scaled.*255;
+        zcol = s.acc_x_mean_scaled.*255;
+
+        s.acc_xyz_RGB(:,:,1) = xcol;
+        s.acc_xyz_RGB(:,:,2) = ycol;
+        s.acc_xyz_RGB(:,:,3) = zcol;
+    catch
+        disp('Unable to calculate scaled matrices.')
     end
     try
         mat1 = [s.acc_x_mean'; s.acc_y_mean'; s.acc_z_mean'; s.acc_sum_mean']';
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_mean_binSize' num2str(binSize) 's.csv'], s.acc_x_mean, {'ACC X'});
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_mean_binSize' num2str(binSize) 's.csv'], s.acc_y_mean, {'ACC Y'});
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_mean_binSize' num2str(binSize) 's.csv'], s.acc_z_mean, {'ACC Z'});
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_mean_binSize' num2str(binSize) 's.csv'], s.acc_sum_mean, {'ACC SUM'});
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_ALL_mean_binSize' num2str(binSize) 's.csv'], mat1, header1);
-
+        % csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_mean_binSize' num2str(binSize) 's.csv'], s.acc_x_mean, {'ACC X'});
+        % csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_mean_binSize' num2str(binSize) 's.csv'], s.acc_y_mean, {'ACC Y'});
+        % csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_mean_binSize' num2str(binSize) 's.csv'], s.acc_z_mean, {'ACC Z'});
+        % csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_mean_binSize' num2str(binSize) 's.csv'], s.acc_sum_mean, {'ACC SUM'});
+        try
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_ALL_mean_binSize' num2str(binSize) 's.csv'], mat1, header1);
+        catch
+        end
         % CSV files for spectral data
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_PSD_binSize' num2str(binSize) 's.csv'], s.acc_x_psd', header2);
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_PSD_binSize' num2str(binSize) 's.csv'], s.acc_y_psd', header2);
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_PSD_binSize' num2str(binSize) 's.csv'], s.acc_z_psd', header2);
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_PSD_binSize' num2str(binSize) 's.csv'], s.acc_sum_psd', header2); 
+        % csvwrite([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_PSD_binSize' num2str(binSize) 's_noheader.csv'], s.acc_x_psd');
+        % csvwrite([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_PSD_binSize' num2str(binSize) 's_noheader.csv'], s.acc_y_psd');
+        % csvwrite([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_PSD_binSize' num2str(binSize) 's_noheader.csv'], s.acc_z_psd');
+        % csvwrite([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_PSD_binSize' num2str(binSize) 's_noheader.csv'], s.acc_sum_psd'); 
+        try
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_PSD_binSize' num2str(binSize) 's.csv'], s.acc_x_psd', header2);
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_PSD_binSize' num2str(binSize) 's.csv'], s.acc_y_psd', header2);
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_PSD_binSize' num2str(binSize) 's.csv'], s.acc_z_psd', header2);
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_PSD_binSize' num2str(binSize) 's.csv'], s.acc_sum_psd', header2); 
+        end
 
-        mat1_scaled = [s.acc_x_mean_scaled'; s.acc_y_mean_scaled'; s.acc_z_mean_scaled'; s.acc_sum_mean_scaled']';
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_x_mean_scaled, {'ACC X'});
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_y_mean_scaled, {'ACC Y'});
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_z_mean_scaled, {'ACC Z'});
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_sum_mean_scaled, {'ACC SUM'});
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_ALL_mean_binSize' num2str(binSize) 's_scaled.csv'], mat1_scaled, header1);
+        try
+            mat1_scaled = [s.acc_x_mean_scaled'; s.acc_y_mean_scaled'; s.acc_z_mean_scaled'; s.acc_sum_mean_scaled']';
+            % csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_x_mean_scaled, {'ACC X'});
+            % csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_y_mean_scaled, {'ACC Y'});
+            % csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_z_mean_scaled, {'ACC Z'});
+            % csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_mean_binSize' num2str(binSize) 's_scaled.csv'], s.acc_sum_mean_scaled, {'ACC SUM'});
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_ALL_mean_binSize' num2str(binSize) 's_scaled.csv'], mat1_scaled, header1);
 
-        % CSV files for spectral data
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_x_psd_scaled', header2);
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_y_psd_scaled', header2);
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_z_psd_scaled', header2);
-        csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_sum_psd_scaled', header2);
+            % CSV files for spectral data
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_x_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_x_psd_scaled', header2);
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_y_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_y_psd_scaled', header2);
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_z_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_z_psd_scaled', header2);
+            csvwrite_with_headers([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_sum_PSD_binSize' num2str(binSize) 's_scaled.csv'], s.acc_sum_psd_scaled', header2);
+        catch
+            disp('Unable to write CSVs for scaled data.')
+        end
+
+        % MAT file for spectral data as RGB
+        try
+            save([dir01 'actigraphy/processed/binned/binSize' num2str(binSize) '/DIA_' s.Patient '_embrace' '_acc_xyz_PSD_RGB_binSize' num2str(binSize) 's_scaled.mat'], s.acc_xyz_RGB);
+        catch
+        end
     catch
         disp('Unable to save CSV files')
     end
 
     % Turn off logging
+    disp('-------------------END-------------------')
     diary off
 
 end
